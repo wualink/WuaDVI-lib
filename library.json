@@ -1,5 +1,5 @@
 {
-  "name": "WuaDVI-lib",
+  "name": "WuaDVI",
   "version": "0.1.0",
   "description": "Driver library for the WuaDVI board (ESP32-C3 + RP2354B DVI display engine): RP firmware management, SPI rect transport, LVGL binding and resolution-independent widget primitives.",
   "keywords": "wuadvi, dvi, hdmi, esp32, esp32c3, rp2350, rp2354, lvgl, display",

@@ -74,7 +74,7 @@ jobs:
       # whether this installs cleanly in the Arduino IDE.
       - uses: arduino/arduino-lint-action@v1
         with:
-          library-manager: update
+          library-manager: submit
           compliance: strict
 
   version:
