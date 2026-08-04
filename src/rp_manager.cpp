@@ -7,6 +7,7 @@
 #include "rp_boot.h"
 #include "link_protocol.h"
 #include "wuadvi_config.h"
+#include "wua_resolution.h"
 #include "wuadvi_rp_payload.h"
 
 /**
@@ -69,7 +70,7 @@ bool rp_manager_bring_up(rp_manager_status_t *out) {
                   (unsigned)RP_PAYLOAD_VERSION_MAJOR,
                   (unsigned)RP_PAYLOAD_VERSION_MINOR,
                   (unsigned)RP_PAYLOAD_VERSION_PATCH,
-                  WUADVI_RES_TEXT,
+                  wua_resolution()->name,
                   (unsigned)RP_PAYLOAD_FW_SIZE,
                   (unsigned long)RP_PAYLOAD_FW_CRC32);
 
@@ -134,8 +135,8 @@ bool rp_manager_bring_up(rp_manager_status_t *out) {
      * mode this build drives.  It then applies that mode's clocks/voltage,
      * allocates the framebuffer, starts the DVI and shows its splash. */
     Serial.printf("[RP] setting resolution: %s (id %u)\n",
-                  WUADVI_RES_TEXT, (unsigned)WUADVI_LINK_RES_ID);
-    rp_link_set_resolution(WUADVI_LINK_RES_ID);
+                  wua_resolution()->name, (unsigned)wua_resolution()->id);
+    rp_link_set_resolution(wua_resolution()->id);
 
     /* Let the boot splash serve its minimum time, then take the screen. */
     if (!wait_ready(WUADVI_READY_WINDOW_MS, &st.info)) {

@@ -8,8 +8,8 @@
  * Hardware: WuaDVI board (ESP32-C3 + RP2354B), HDMI monitor.
  * Console : native USB-CDC at 115200 baud.
  *
- * The resolution is a build flag — see wuadvi_config.h. Under PlatformIO add
- * one -DWUADVI_RES_* to build_flags; the default is 640x480x1.
+ * The display mode is chosen at runtime — pass it to begin(), or change it
+ * later with dvi.setResolution(), which stores it and restarts into it.
  *
  * Copyright (c) 2026 Wualabs LTD. MIT licensed.
  */
@@ -25,7 +25,7 @@ void setup() {
     Serial.printf("\nWuaDVI %s — display engine v%s\n",
                   dvi.resolutionName(), WuaDVI::displayEngineVersion());
 
-    if (!dvi.begin()) {
+    if (!dvi.begin(WUA_RES_640x480x1)) {
         Serial.printf("[ERROR] %s\n", dvi.lastError());
         return; /* loop() keeps retrying */
     }
@@ -42,6 +42,12 @@ void setup() {
 
 void loop() {
     dvi.loop();
+
+    /* Changing mode is one call. It stores the choice and restarts into it —
+     * so it does not return, and the next begin() follows the stored mode.
+     *
+     *   dvi.setResolution(WUA_RES_1280x720x1);
+     */
 
     static uint32_t last = 0;
     if (millis() - last >= 5000) {

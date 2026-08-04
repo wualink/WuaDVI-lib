@@ -6,16 +6,18 @@
 #include <string.h>
 #include "display_link.h"
 #include "spi_bus.h"
+#include "wua_resolution.h"
 
 static const SPISettings kRectSettings(DISPLAY_LINK_SPI_HZ, MSBFIRST, SPI_MODE1);
 
 /*
- * Static zero buffer used to pad short rects up to RECT_PAYLOAD_MAX so every
- * SPI transaction is exactly RECT_TOTAL_SIZE bytes — the RP2354B slave DMA
- * is configured for a fixed-length transfer and would stall on a short
- * packet.
+ * Static zero buffer used to pad short rects up to the active mode's payload
+ * size so every SPI transaction is exactly wua_rect_total_size() bytes — the
+ * RP2354B slave DMA is configured for a fixed-length transfer and would stall
+ * on a short packet.  Sized for the worst case across every mode, since the
+ * mode is a runtime choice.
  */
-static const uint8_t s_pad_zero[RECT_PAYLOAD_MAX] = {0};
+static const uint8_t s_pad_zero[RECT_PAYLOAD_MAX_ABS] = {0};
 
 /* End-of-transmission timestamp of the previous rect (see the gap below). */
 static uint32_t s_last_end_us = 0;
@@ -116,13 +118,12 @@ static void wait_inter_packet_gap(void) {
         delayMicroseconds(remaining);
 }
 
-#if defined(WUADVI_COLOR_MONO)
 /*
  * Scratch buffer holding the rect packed to 1 bit/pixel (MSB first, each row
- * padded to a whole byte).  Sized for the largest possible rect.
+ * padded to a whole byte).  Sized for the WORST CASE across every mode, since
+ * the mode is a runtime choice; only the mono modes ever use it.
  */
-static uint8_t s_bits_buf[RECT_PAYLOAD_MAX];
-#endif
+static uint8_t s_bits_buf[RECT_PAYLOAD_MAX_ABS];
 
 bool display_link_send_rect(uint16_t x1, uint16_t y1,
                             uint16_t x2, uint16_t y2,
@@ -131,21 +132,18 @@ bool display_link_send_rect(uint16_t x1, uint16_t y1,
         return false;
     if (x2 < x1 || y2 < y1)
         return false;
-    if (x2 >= SCREEN_W || y2 >= SCREEN_H)
+    if (x2 >= wua_screen_w() || y2 >= wua_screen_h())
         return false;
 
     const uint32_t rect_w = (uint32_t)(x2 - x1 + 1);
     const uint32_t rect_h = (uint32_t)(y2 - y1 + 1);
 
     /* Wire bytes of ONE pixel row of this rect. */
-#if defined(WUADVI_COLOR_MONO)
-    const uint32_t row_payload = (rect_w + 7u) / 8u;
-#else
-    const uint32_t row_payload = rect_w * 2u;
-#endif
+    const bool mono = wua_screen_is_mono();
+    const uint32_t row_payload = mono ? ((rect_w + 7u) / 8u) : (rect_w * 2u);
 
     /*
-     * Split the rect into horizontal bands that respect RECT_PAYLOAD_MAX.
+     * Split the rect into horizontal bands that respect the active mode's payload budget.
      *
      * LVGL's partial renderer limits the AREA of a dirty chunk (its RGB565
      * bytes must fit the render buffer) but not its SHAPE: a tall narrow
@@ -153,10 +151,10 @@ bool display_link_send_rect(uint16_t x1, uint16_t y1,
      * mono payload (rows padded to whole bytes: 5 B x 581 = 2905 B) exceeds
      * the 24-full-width-lines packet budget (2400 B).  Sending it whole
      * would overflow the packing buffer; each band below is bounded by
-     * construction.  row_payload can never exceed RECT_PAYLOAD_MAX on its
+     * construction.  row_payload can never exceed that budget on its
      * own (a full-width row is exactly 1/24th of it), so max_rows >= 1.
      */
-    const uint32_t max_rows = RECT_PAYLOAD_MAX / row_payload;
+    const uint32_t max_rows = wua_rect_payload_max() / row_payload;
 
     for (uint32_t band_y = 0; band_y < rect_h; band_y += max_rows) {
         const uint32_t remaining = rect_h - band_y;
@@ -169,29 +167,29 @@ bool display_link_send_rect(uint16_t x1, uint16_t y1,
         /* Pixel payload that actually goes on the wire. */
         const uint8_t *payload;
         const uint32_t pix_size = row_payload * band_h;
-        if (pix_size > RECT_PAYLOAD_MAX)
+        if (pix_size > wua_rect_payload_max())
             return false; /* unreachable guard */
 
-#if defined(WUADVI_COLOR_MONO)
-        /* Pack the RGB565 LE band to 1 bit/pixel (MSB first), each row
+        if (mono) {
+            /* Pack the RGB565 LE band to 1 bit/pixel (MSB first), each row
          * padded to a whole byte so the RP addresses rows with a fixed
          * stride. */
-        for (uint32_t row = 0; row < band_h; ++row) {
-            uint8_t *drow = s_bits_buf + row * row_payload;
-            for (uint32_t b = 0; b < row_payload; ++b)
-                drow[b] = 0;
-            for (uint32_t col = 0; col < rect_w; ++col) {
-                const uint32_t i = row * rect_w + col;
-                const uint16_t c = (uint16_t)(band_pixels[2u * i] |
-                                              ((uint16_t)band_pixels[2u * i + 1u] << 8));
-                if (WUADVI_MONO_BIT(c))
-                    drow[col >> 3] |= (uint8_t)(0x80u >> (col & 7));
+            for (uint32_t row = 0; row < band_h; ++row) {
+                uint8_t *drow = s_bits_buf + row * row_payload;
+                for (uint32_t b = 0; b < row_payload; ++b)
+                    drow[b] = 0;
+                for (uint32_t col = 0; col < rect_w; ++col) {
+                    const uint32_t i = row * rect_w + col;
+                    const uint16_t c = (uint16_t)(band_pixels[2u * i] |
+                                                  ((uint16_t)band_pixels[2u * i + 1u] << 8));
+                    if (WUADVI_MONO_BIT(c))
+                        drow[col >> 3] |= (uint8_t)(0x80u >> (col & 7));
+                }
             }
+            payload = s_bits_buf;
+        } else {
+            payload = band_pixels;
         }
-        payload = s_bits_buf;
-#else
-        payload = band_pixels;
-#endif
 
         const uint16_t band_y1 = (uint16_t)(y1 + band_y);
         const uint16_t band_y2 = (uint16_t)(band_y1 + band_h - 1u);
@@ -221,7 +219,7 @@ bool display_link_send_rect(uint16_t x1, uint16_t y1,
          * the RP clocks its 8-byte telemetry packet back on MISO. */
         spi_bus().transferBytes(hdr, s_rx_hdr, RECT_HEADER_SIZE);
         spi_bus().writeBytes(payload, pix_size);
-        const uint32_t pad = RECT_PAYLOAD_MAX - pix_size;
+        const uint32_t pad = wua_rect_payload_max() - pix_size;
         if (pad > 0)
             spi_bus().writeBytes(s_pad_zero, pad);
 

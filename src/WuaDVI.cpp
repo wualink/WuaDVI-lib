@@ -4,6 +4,8 @@
  */
 #include "WuaDVI.h"
 
+#include <Preferences.h>
+
 #include "display_link.h"
 #include "lvgl_port.h"
 #include "rp_boot.h"
@@ -58,7 +60,63 @@ bool WuaDVI::startPipeline(void) {
     return true;
 }
 
-bool WuaDVI::begin(void) {
+/* Where setResolution() stores its choice.  NVS, not RTC memory: the mode must
+ * survive a power cycle, not only a reset. */
+#define WUADVI_NVS_NAMESPACE "wuadvi"
+#define WUADVI_NVS_KEY_RES   "res"
+
+bool WuaDVI::storedResolution(wua_resolution_id_t *out_res) {
+    Preferences prefs;
+    if (!prefs.begin(WUADVI_NVS_NAMESPACE, true /* read-only */))
+        return false;
+    const uint8_t id = prefs.getUChar(WUADVI_NVS_KEY_RES, 0);
+    prefs.end();
+    if (id == 0 || wua_resolution_by_id(id) == nullptr)
+        return false;
+    if (out_res != nullptr)
+        *out_res = (wua_resolution_id_t)id;
+    return true;
+}
+
+void WuaDVI::clearStoredResolution(void) {
+    Preferences prefs;
+    if (!prefs.begin(WUADVI_NVS_NAMESPACE, false))
+        return;
+    prefs.remove(WUADVI_NVS_KEY_RES);
+    prefs.end();
+}
+
+bool WuaDVI::setResolution(wua_resolution_id_t res) {
+    if (wua_resolution_by_id((uint8_t)res) == nullptr) {
+        m_error = "unknown display mode";
+        return false;
+    }
+
+    Preferences prefs;
+    if (!prefs.begin(WUADVI_NVS_NAMESPACE, false)) {
+        m_error = "cannot open storage to save the display mode";
+        return false;
+    }
+    prefs.putUChar(WUADVI_NVS_KEY_RES, (uint8_t)res);
+    prefs.end();
+
+    delay(50); /* let any pending serial output reach the host */
+    ESP.restart();
+    return true; /* not reached */
+}
+
+bool WuaDVI::begin(wua_resolution_id_t res) {
+    /* A mode stored by setResolution() wins over the argument: that is what
+     * makes the change persist across the restart it performs. */
+    wua_resolution_id_t stored;
+    if (storedResolution(&stored))
+        res = stored;
+
+    if (!wua_resolution_set_active((uint8_t)res)) {
+        m_error = "unknown display mode";
+        return false;
+    }
+
     /* Strap and UART pins to high impedance before anything else: they share
      * the display engine's internal-flash QSPI bus, and driving them while it
      * boots would keep it out of its normal firmware. */

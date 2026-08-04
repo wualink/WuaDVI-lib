@@ -5,9 +5,9 @@ LVGL widgets that adapt themselves to every supported resolution.
 
 Wualink, member of Wualabs — [wualabs.com](https://wualabs.com)
 
-> **Status: 0.2.0.** The board API, transport and widget primitives are in
-> place and build against the reference hardware. Resolution is still a build
-> flag; runtime selection lands in 0.3.0. See [Roadmap](#roadmap).
+> **Status: 0.3.0.** The board API, transport, widget primitives and runtime
+> resolution selection are in place. Not yet verified on hardware after the
+> extraction — see [Roadmap](#roadmap).
 
 ---
 
@@ -70,7 +70,7 @@ void setup() {
 
     // Brings up the RP2354B (flashing it if needed), negotiates the mode,
     // starts LVGL and the rect stream.
-    if (!dvi.begin()) {
+    if (!dvi.begin(WUA_RES_640x480x1)) {
         Serial.println(dvi.lastError());
         return;
     }
@@ -95,7 +95,7 @@ One line. LVGL is installed for you, and so is the pinned display-engine
 firmware:
 
 ```ini
-lib_deps = https://github.com/wualink/WuaDVI-lib.git#v0.2.0
+lib_deps = https://github.com/wualink/WuaDVI-lib.git#v0.3.0
 ```
 
 Pin an exact version rather than a floating range — this library pins the
@@ -174,6 +174,26 @@ Three layers, so simple sketches stay simple and advanced ones stay possible:
 L0 is meant to be enough on its own. If a sketch has to reach into L1 to do
 something ordinary, that is a gap in L0 — please open an issue.
 
+### Choosing the display mode
+
+The mode is a runtime value, not a build flag:
+
+```cpp
+dvi.begin(WUA_RES_800x600x1);      // start in a mode
+
+dvi.setResolution(WUA_RES_1280x720x1);   // change it — stores and restarts
+```
+
+`setResolution()` **does not return**: it saves the mode and restarts the
+board. That is not a shortcut — the display engine reboots into a new mode
+anyway (its clocks and framebuffer are fixed once scanout starts), and this
+side has to resize its render buffer and rebuild the interface regardless.
+Restarting both together is the one sequence that is always consistent.
+
+The stored mode wins over the argument to `begin()`, so a sketch written as
+`dvi.begin()` follows whatever was last chosen. `WuaDVI::storedResolution()`
+reads it and `WuaDVI::clearStoredResolution()` forgets it.
+
 ### Theming
 
 The primitives carry the *mechanism* (resolution-independent sizing, the
@@ -226,8 +246,8 @@ use this happens once and is invisible.
 | Version | Contents |
 |---|---|
 | 0.1.0 | Packaging, RP firmware pinning and build hook |
-| **0.2.0** | Board API (L0), transport (L1), widget primitives (L2) and theming — **current** |
-| 0.3.0 | Runtime resolution selection |
+| 0.2.0 | Board API (L0), transport (L1), widget primitives (L2) and theming |
+| **0.3.0** | Runtime resolution selection — **current** |
 | 1.0.0 | Stable API |
 
 Related repositories:

@@ -62,15 +62,15 @@
  *                         1 bit/pixel with byte-padded rows.
  * In the RGB565 modes both sizes are equal.
  */
-#define PARTIAL_BUF_LINES    24u
-#define LV_PARTIAL_BUF_BYTES ((uint32_t)(SCREEN_W) * (PARTIAL_BUF_LINES) * 2u)
-#if defined(WUADVI_COLOR_MONO)
-#define RECT_ROW_BYTES_MAX (((uint32_t)(SCREEN_W) + 7u) / 8u)
-#define RECT_PAYLOAD_MAX   (RECT_ROW_BYTES_MAX * (PARTIAL_BUF_LINES))
-#else
-#define RECT_PAYLOAD_MAX ((uint32_t)(SCREEN_W) * (PARTIAL_BUF_LINES) * WIRE_BYTES_PER_PIXEL)
-#endif
-#define RECT_TOTAL_SIZE ((uint32_t)(RECT_HEADER_SIZE) + (RECT_PAYLOAD_MAX))
+#define PARTIAL_BUF_LINES 24u
+
+/* WORST CASE across every mode, for statically sized buffers.  The live sizes
+ * are runtime values — wua_rect_payload_max(), wua_rect_total_size() and
+ * wua_partial_buf_bytes() in wua_resolution.h — because the mode is chosen at
+ * runtime.  The widest COLOUR mode dominates the payload (400 px x 24 lines x
+ * 2 B); the widest mono mode packs to far less (1280 px -> 160 B/row). */
+#define RECT_PAYLOAD_MAX_ABS ((uint32_t)400u * (PARTIAL_BUF_LINES) * 2u)
+#define RECT_TOTAL_SIZE_MAX  ((uint32_t)(RECT_HEADER_SIZE) + (RECT_PAYLOAD_MAX_ABS))
 
 /* ── Telemetry back-channel (RP → ESP32 on MISO) ────────────────────────────
  * The rect stream only uses MOSI; the RP's TX line would otherwise carry

@@ -48,72 +48,8 @@
 #define WUADVI_PIN_SPI_MOSI 6
 #define WUADVI_PIN_SPI_CS   7
 
-/* ── Display resolution selection ─────────────────────────────────────────
- * Chosen via the -DWUADVI_RES_* build flag; there is a single PlatformIO
- * environment and exactly one flag is uncommented at a time.
- *
- * The RP image is UNIVERSAL: one .uf2 carries every mode and the active one is
- * picked at runtime from the SET_RESOLUTION command we send during the boot
- * handshake.  So the flag below does NOT select a different embedded UF2, and
- * the resolution never triggers a re-flash — the RP is only re-flashed when the
- * version it reports differs from the embedded payload.  Changing resolution
- * therefore means reflashing only this ESP32.
- *
- * Derived macros:
- *   SCREEN_W / SCREEN_H     logical framebuffer size (LVGL size).
- *   WUADVI_COLOR_MONO       defined in the 1-bit modes only.
- *   WIRE_BYTES_PER_PIXEL    wire bytes per pixel in the byte-based modes.
- *   WUADVI_LINK_RES_ID      resolution id reported/expected on the link.
- *   WUADVI_RES_TEXT         human-readable caption for logs and the UI.
- *
- * A sketch that sets no flag gets 640x480x1: the mode with the most scanout
- * margin of the set, so the library works out of the box and the first picture
- * is the most likely to be solid.  Select another with one -DWUADVI_RES_* in
- * your build flags. */
-#if !defined(WUADVI_RES_320x240) && !defined(WUADVI_RES_400x240) && !defined(WUADVI_RES_640x480x1) && !defined(WUADVI_RES_800x600x1) && !defined(WUADVI_RES_1280x720x1)
-#define WUADVI_RES_640x480x1
-#endif
-
-#if defined(WUADVI_RES_1280x720x1)
-/* EXPERIMENTAL — needs an RP built from feat/1280x720-experiment; the
-   * released v1.0.0 RP image does not know this resolution id.  Runs at 30 Hz
-   * (60 Hz would need a ~742 MHz bit clock) and costs a 61 KB LVGL render
-   * buffer, double the 640x480 one. */
-#define SCREEN_W             1280u
-#define SCREEN_H             720u
-#define WUADVI_COLOR_MONO    1
-#define WIRE_BYTES_PER_PIXEL 1u /* placeholder; mono is bit-packed */
-#define WUADVI_LINK_RES_ID   LINK_RES_1280x720x1
-#define WUADVI_RES_TEXT      "1280x720 mono"
-#elif defined(WUADVI_RES_800x600x1)
-#define SCREEN_W             800u
-#define SCREEN_H             600u
-#define WUADVI_COLOR_MONO    1
-#define WIRE_BYTES_PER_PIXEL 1u /* placeholder; mono is bit-packed */
-#define WUADVI_LINK_RES_ID   LINK_RES_800x600x1
-#define WUADVI_RES_TEXT      "800x600 mono"
-#elif defined(WUADVI_RES_640x480x1)
-#define SCREEN_W             640u
-#define SCREEN_H             480u
-#define WUADVI_COLOR_MONO    1
-#define WIRE_BYTES_PER_PIXEL 1u /* placeholder; mono is bit-packed */
-#define WUADVI_LINK_RES_ID   LINK_RES_640x480x1
-#define WUADVI_RES_TEXT      "640x480 mono"
-#elif defined(WUADVI_RES_400x240)
-#define SCREEN_W             400u
-#define SCREEN_H             240u
-#define WIRE_BYTES_PER_PIXEL 2u
-#define WUADVI_LINK_RES_ID   LINK_RES_400x240
-#define WUADVI_RES_TEXT      "400x240 RGB565"
-#elif defined(WUADVI_RES_320x240)
-#define SCREEN_W             320u
-#define SCREEN_H             240u
-#define WIRE_BYTES_PER_PIXEL 2u
-#define WUADVI_LINK_RES_ID   LINK_RES_320x240
-#define WUADVI_RES_TEXT      "320x240 RGB565"
-#else
-#error "No resolution selected - define one WUADVI_RES_* flag (see platformio.ini)"
-#endif
+/* The display mode is a RUNTIME choice — see wua_resolution.h.
+ * It used to be selected here by a -DWUADVI_RES_* build flag. */
 
 /* ── Timing / behavior tuning ────────────────────────────────────────────── */
 /** Window to wait for the RP to answer a probe after a normal reset (its

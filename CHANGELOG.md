@@ -18,6 +18,30 @@ lines move under a new version heading.
 
 _Nothing yet._
 
+## [0.3.0] - 2026-08-04
+
+### Added
+
+- **Runtime resolution selection.** `begin(res)` takes the mode and
+  `setResolution(res)` changes it: the choice is stored in NVS and the board
+  restarts into it, which is also how the display engine changes mode. The
+  stored mode wins over the `begin()` argument, so a sketch written as
+  `begin()` follows whatever was last selected. `storedResolution()` and
+  `clearStoredResolution()` read and forget it.
+- `wua_resolution.h`: the mode table and every size derived from it, mirroring
+  the table the display-engine firmware keeps on its side.
+
+### Changed
+
+- The mode is no longer a build flag. `SCREEN_W`/`SCREEN_H`,
+  `WUADVI_COLOR_MONO`, `RECT_PAYLOAD_MAX` and friends became runtime
+  accessors, and the mono/colour paths that were `#if`-selected are now
+  ordinary branches.
+- Static wire buffers are sized to the worst case across every mode, which
+  costs about 17 KB of RAM — the price of picking the mode at runtime.
+
+[0.3.0]: https://github.com/wualink/WuaDVI-lib/releases/tag/v0.3.0
+
 ## [0.2.0] - 2026-08-04
 
 The library now drives the board: everything the reference firmware did is here,

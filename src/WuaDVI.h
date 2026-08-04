@@ -33,6 +33,7 @@
 #include <stdint.h>
 
 #include "wuadvi_config.h"
+#include "wua_resolution.h"
 #include "wua_ui.h"
 
 /**
@@ -54,7 +55,37 @@ class WuaDVI {
      *
      * @return true when the display is running; false with lastError() set.
      */
-    bool begin(void);
+    bool begin(wua_resolution_id_t res = WUA_RES_640x480x1);
+
+    /**
+     * @brief Change the display mode and restart into it.
+     *
+     * Stores the mode so it survives the restart, then reboots the ESP32.
+     * **This call does not return.**
+     *
+     * A restart is how the mode changes rather than an implementation
+     * shortcut: the display engine itself reboots into a new mode (its clocks
+     * and framebuffer are fixed once its scanout starts), and this side has to
+     * resize the render buffer and rebuild the interface anyway. Restarting
+     * both together is the one sequence that is always consistent.
+     *
+     * The stored mode is picked up by the next begin() that is called without
+     * an explicit argument, so a sketch that does `dvi.begin()` follows it.
+     *
+     * @param res  Mode to switch to.
+     * @return Only on failure — false if @p res is not a valid mode.
+     */
+    bool setResolution(wua_resolution_id_t res);
+
+    /**
+     * @brief The mode stored by setResolution(), if any.
+     * @param out_res  Receives the stored mode.
+     * @return false when nothing has been stored (a fresh device).
+     */
+    static bool storedResolution(wua_resolution_id_t *out_res);
+
+    /** @brief Forget the stored mode, so begin() uses its argument again. */
+    static void clearStoredResolution(void);
 
     /**
      * @brief Service the board. Call from your loop(), as often as possible.
@@ -88,13 +119,13 @@ class WuaDVI {
     bool temperature(int16_t *out_c10) const;
 
     /** @return Screen width in pixels for the active mode. */
-    uint16_t width(void) const { return SCREEN_W; }
+    uint16_t width(void) const { return wua_screen_w(); }
 
     /** @return Screen height in pixels for the active mode. */
-    uint16_t height(void) const { return SCREEN_H; }
+    uint16_t height(void) const { return wua_screen_h(); }
 
     /** @return Human-readable name of the active mode, e.g. "640x480 mono". */
-    const char *resolutionName(void) const { return WUADVI_RES_TEXT; }
+    const char *resolutionName(void) const { return wua_resolution()->name; }
 
     /** @return Pixel packets successfully sent since boot. */
     uint32_t rectsSent(void) const;

@@ -6,7 +6,7 @@
  * fonts and styles internally for the active resolution, so screens built on
  * top of them never contain a per-resolution #if:
  *
- *   - Text heights are given as a percentage of SCREEN_H and snap down to
+ *   - Text heights are given as a percentage of wua_screen_h() and snap down to
  *     the largest enabled Montserrat font (14/18/24/32/48) — the same layout
  *     keeps the same proportions from 320x240 to 800x600.
  *   - Value labels reserve the width of their widest possible text, so the
@@ -126,7 +126,7 @@ lv_obj_t *wua_container(lv_obj_t *parent);
  * @brief Styled text label with the font picked from a screen-height ratio.
  * @param parent      Parent object.
  * @param text        Initial text.
- * @param height_pct  Desired text height as % of SCREEN_H (e.g. 6).
+ * @param height_pct  Desired text height as % of wua_screen_h() (e.g. 6).
  * @param color       Text color (usually from wua_theme()).
  * @return The new label.
  */
@@ -147,7 +147,7 @@ lv_obj_t *wua_label(lv_obj_t *parent, const char *text,
  *                    available width — create it after sizing the parent).
  * @param max_text    Widest text the label will ever show (e.g. "100 %",
  *                    "00:00:00").  Also the initial text.
- * @param height_pct  Desired text height as % of SCREEN_H.
+ * @param height_pct  Desired text height as % of wua_screen_h().
  * @return The new label (update it with lv_label_set_text_fmt()).
  */
 lv_obj_t *wua_value_label(lv_obj_t *parent, const char *max_text,
@@ -217,7 +217,7 @@ void wua_meter_set(wua_meter_t *meter, int32_t value);
 /**
  * @brief HH:MM:SS clock label with a fixed width (never reflows).
  * @param parent      Parent object.
- * @param height_pct  Desired text height as % of SCREEN_H.
+ * @param height_pct  Desired text height as % of wua_screen_h().
  * @return The clock label; update it with wua_clock_set().
  */
 lv_obj_t *wua_clock(lv_obj_t *parent, int32_t height_pct);

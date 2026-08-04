@@ -6,6 +6,7 @@
 #include <string.h>
 #include "wua_ui.h"
 #include "wuadvi_config.h"
+#include "wua_resolution.h"
 
 /* ── Theme ───────────────────────────────────────────────────────────────── */
 const wua_theme_t WUA_THEME_DEFAULT = {
@@ -86,7 +87,7 @@ static const struct {
 void wua_ui_init(void) {
     /* One padding unit that grows with the screen: 4 px at 240 lines,
      * 8 px at 480, 10 px at 600. */
-    s_pad = (int32_t)SCREEN_H / 60;
+    s_pad = (int32_t)wua_screen_h() / 60;
     if (s_pad < 3)
         s_pad = 3;
 
@@ -109,10 +110,10 @@ const lv_font_t *wua_font_fit(int32_t px) {
 
 /**
  * @brief Convert a screen-height percentage to the matching font.
- * @param height_pct  Desired text height as % of SCREEN_H.
+ * @param height_pct  Desired text height as % of wua_screen_h().
  */
 static const lv_font_t *font_for_pct(int32_t height_pct) {
-    return wua_font_fit((int32_t)SCREEN_H * height_pct / 100);
+    return wua_font_fit((int32_t)wua_screen_h() * height_pct / 100);
 }
 
 lv_obj_t *wua_container(lv_obj_t *parent) {
@@ -294,7 +295,7 @@ wua_meter_t *wua_meter(lv_obj_t *parent, int32_t width_pct,
     m->label = wua_value_label(m->wrapper, max_text, 11);
 
     /* Bar height grows with the screen (9 px at 240 lines, 24 at 600). */
-    int32_t bar_h = (int32_t)SCREEN_H / 25;
+    int32_t bar_h = (int32_t)wua_screen_h() / 25;
     if (bar_h < 8)
         bar_h = 8;
     m->bar = lv_bar_create(m->wrapper);

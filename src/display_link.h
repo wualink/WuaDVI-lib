@@ -32,8 +32,8 @@
 /**
  * @brief Send one dirty rectangle to the RP (as one or more packets).
  *
- * @param x1      Left edge (inclusive), 0 ≤ x1 ≤ x2 < SCREEN_W.
- * @param y1      Top edge (inclusive), 0 ≤ y1 ≤ y2 < SCREEN_H.
+ * @param x1      Left edge (inclusive), 0 <= x1 <= x2 < wua_screen_w().
+ * @param y1      Top edge (inclusive), 0 <= y1 <= y2 < wua_screen_h().
  * @param x2      Right edge (inclusive).
  * @param y2      Bottom edge (inclusive).
  * @param pixels  rect_w*rect_h RGB565 little-endian pixels, row-major,

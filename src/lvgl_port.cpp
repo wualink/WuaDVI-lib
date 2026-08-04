@@ -8,6 +8,7 @@
 #include "lvgl_port.h"
 #include "display_link.h"
 #include "wuadvi_config.h"
+#include "wua_resolution.h"
 
 static uint8_t *s_partial_buf = nullptr;
 static lv_display_t *s_disp = nullptr;
@@ -41,7 +42,6 @@ static void lvgl_log_cb(lv_log_level_t level, const char *buf) {
     Serial.println(buf);
 }
 
-#if !defined(WUADVI_COLOR_MONO)
 /**
  * @brief Ordered-dither a freshly rendered rect in place (RGB565 modes only).
  *
@@ -88,7 +88,6 @@ static void dither_rect(uint8_t *px, const lv_area_t *area) {
         }
     }
 }
-#endif
 
 /**
  * @brief LVGL flush callback: ship one dirty rect to the RP2354B.
@@ -102,10 +101,11 @@ static void dither_rect(uint8_t *px, const lv_area_t *area) {
  * @param px_map  Rendered pixels of that rect.
  */
 static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
-#if !defined(WUADVI_COLOR_MONO)
-    /* Break the TMDS flat-field banding before the pixels go out. */
-    dither_rect(px_map, area);
-#endif
+    /* Break the TMDS flat-field banding before the pixels go out.  Only the
+     * colour modes need it: the mono packing thresholds to 1 bit anyway, and
+     * a +/-1 LSB nudge there would only flip pixels near the threshold. */
+    if (!wua_screen_is_mono())
+        dither_rect(px_map, area);
     if (display_link_send_rect((uint16_t)area->x1, (uint16_t)area->y1,
                                (uint16_t)area->x2, (uint16_t)area->y2,
                                px_map)) {
@@ -122,13 +122,13 @@ static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
 
 bool lvgl_port_init(void) {
     /* LVGL renders RGB565 (2 B/px) in every mode, so the render buffer is
-     * LV_PARTIAL_BUF_BYTES; in the mono modes the wire payload is smaller
+     * wua_partial_buf_bytes(); in the mono modes the wire payload is smaller
      * (the packing happens inside display_link). */
-    s_partial_buf = (uint8_t *)heap_caps_malloc(LV_PARTIAL_BUF_BYTES, MALLOC_CAP_8BIT);
+    s_partial_buf = (uint8_t *)heap_caps_malloc(wua_partial_buf_bytes(), MALLOC_CAP_8BIT);
     if (s_partial_buf == nullptr) {
         size_t largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
         Serial.printf("[LVGL] render buffer alloc failed (%lu B, largest free block %u B)\n",
-                      (unsigned long)LV_PARTIAL_BUF_BYTES, (unsigned)largest);
+                      (unsigned long)wua_partial_buf_bytes(), (unsigned)largest);
         return false;
     }
 
@@ -136,7 +136,7 @@ bool lvgl_port_init(void) {
     lv_tick_set_cb(lvgl_tick_cb);
     lv_log_register_print_cb(lvgl_log_cb);
 
-    s_disp = lv_display_create(SCREEN_W, SCREEN_H);
+    s_disp = lv_display_create(wua_screen_w(), wua_screen_h());
     if (s_disp == nullptr) {
         Serial.println("[LVGL] lv_display_create failed");
         return false;
@@ -145,7 +145,7 @@ bool lvgl_port_init(void) {
     lv_display_set_color_format(s_disp, LV_COLOR_FORMAT_RGB565);
     lv_display_set_buffers(s_disp,
                            s_partial_buf, nullptr,
-                           LV_PARTIAL_BUF_BYTES,
+                           wua_partial_buf_bytes(),
                            LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_display_set_flush_cb(s_disp, lvgl_flush_cb);
 
@@ -155,8 +155,8 @@ bool lvgl_port_init(void) {
     s_last_full_ms = millis();
 
     Serial.printf("[LVGL] ready: %ux%u, render buffer %lu B (%u lines)\n",
-                  SCREEN_W, SCREEN_H,
-                  (unsigned long)LV_PARTIAL_BUF_BYTES, (unsigned)PARTIAL_BUF_LINES);
+                  wua_screen_w(), wua_screen_h(),
+                  (unsigned long)wua_partial_buf_bytes(), (unsigned)PARTIAL_BUF_LINES);
     return true;
 }
 
