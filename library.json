@@ -21,5 +21,12 @@
   "headers": "WuaDVI.h",
   "build": {
     "extraScript": "scripts/library_build.py"
-  }
+  },
+  "dependencies": [
+    {
+      "owner": "lvgl",
+      "name": "lvgl",
+      "version": "^9.2.2"
+    }
+  ]
 }

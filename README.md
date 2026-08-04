@@ -93,15 +93,20 @@ void loop() {
 
 ### PlatformIO (recommended)
 
+One line. LVGL is installed for you, and so is the pinned display-engine
+firmware:
+
 ```ini
-lib_deps =
-    https://github.com/wualink/WuaDVI-lib.git#v0.1.0
-    lvgl/lvgl@^9.2.2
+lib_deps = https://github.com/wualink/WuaDVI-lib.git#v0.1.0
 ```
 
 Pin an exact version rather than a floating range — this library pins the
 display-engine firmware in turn, and a reproducible build wants the whole chain
 fixed.
+
+Nothing else is required: no `lv_conf.h`, no build flags, no extra dependency.
+If you want your own LVGL configuration, see
+[LVGL configuration](#lvgl-configuration) below.
 
 ### Arduino IDE
 
@@ -130,9 +135,24 @@ Manager as well.
 
 ### LVGL configuration
 
-LVGL is configured per *application* through `lv_conf.h`, so a library cannot
-set it for you. Copy [`extras/lv_conf_reference.h`](extras/) as a starting
-point, or make sure your own `lv_conf.h` satisfies at least:
+**You do not need to do anything here to get started.** LVGL is normally
+configured per *application* through `lv_conf.h`, which is why adding an
+LVGL-based library usually fails on a missing configuration file. This library
+avoids that: if your project does not supply an `lv_conf.h`, it installs a
+validated default (`config/lv_conf_default.h`) where LVGL looks for one.
+
+To use your own configuration instead, provide an `lv_conf.h` in your project —
+the library never overwrites a file that is already there — or set `LV_CONF_PATH`
+/ `LV_CONF_INCLUDE_SIMPLE`, which bypasses the mechanism entirely. Each build
+prints which configuration is in effect:
+
+```
+[WuaDVI-lib] lv_conf.h  : provided by the project
+[WuaDVI-lib] lv_conf.h  : supplied by the library -> .pio/libdeps/<env>/lv_conf.h
+```
+
+[`extras/lv_conf_reference.h`](extras/) is a commented starting point for your
+own. Whatever you use must satisfy at least:
 
 | Setting | Required value | Why |
 |---|---|---|

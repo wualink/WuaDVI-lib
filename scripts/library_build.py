@@ -40,6 +40,48 @@ def _read_pinned_version():
     return open(version_file).read().strip()
 
 
+def _provide_lvgl_config():
+    """Drop a working lv_conf.h next to LVGL when the application has none.
+
+    LVGL is configured per APPLICATION: `lv_conf.h` must be visible when LVGL
+    itself compiles, which a library cannot normally arrange.  The practical
+    consequence is that `lib_deps = WuaDVI` installs LVGL automatically but the
+    build then fails on a missing lv_conf.h — a poor first experience.
+
+    LVGL's own fallback lookup is `../../lv_conf.h` relative to its sources,
+    i.e. the libdeps root.  So if nothing is there yet, place our validated
+    default there and the library works out of the box.
+
+    An application that wants its own configuration simply provides one — its
+    file is never overwritten, and setting LV_CONF_PATH or LV_CONF_INCLUDE_SIMPLE
+    bypasses this lookup entirely.
+    """
+    libdeps = env.subst("$PROJECT_LIBDEPS_DIR")  # noqa: F821
+    pioenv = env.subst("$PIOENV")                # noqa: F821
+    if not libdeps or not pioenv:
+        return
+    target = os.path.join(libdeps, pioenv, "lv_conf.h")
+
+    if os.path.isfile(target):
+        print("[WuaDVI-lib] lv_conf.h  : provided by the project")
+        return
+
+    source = os.path.join(LIB_DIR, "config", "lv_conf_default.h")
+    if not os.path.isfile(source):
+        return  # nothing to offer; LVGL will report the missing config itself
+
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    with open(source, "r", encoding="utf-8") as src:
+        body = src.read()
+    with open(target, "w", encoding="utf-8", newline="\n") as dst:
+        dst.write("/* Written by WuaDVI-lib because this project supplied no\n"
+                  " * lv_conf.h.  To use your own, put one here or in your\n"
+                  " * project and it will not be overwritten.  Source:\n"
+                  " * WuaDVI-lib/config/lv_conf_default.h */\n")
+        dst.write(body)
+    print(f"[WuaDVI-lib] lv_conf.h  : supplied by the library -> {target}")
+
+
 def _generate(version):
     out_dir = os.path.join(env.subst("$BUILD_DIR"), "wuadvi_generated")  # noqa: F821
     os.makedirs(out_dir, exist_ok=True)
@@ -67,3 +109,4 @@ def _generate(version):
 
 
 _generate(_read_pinned_version())
+_provide_lvgl_config()

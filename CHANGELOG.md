@@ -16,7 +16,13 @@ lines move under a new version heading.
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **Zero-configuration install.** Declaring only this library is enough:
+  LVGL is pulled in as a declared dependency, and if the project supplies no
+  `lv_conf.h` the library installs a validated default where LVGL looks for one.
+  A project that provides its own configuration keeps it — the library never
+  overwrites an existing file.
 
 ## [0.1.0] - 2026-07-28
 
