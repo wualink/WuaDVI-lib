@@ -16,13 +16,49 @@ lines move under a new version heading.
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [0.2.0] - 2026-08-04
+
+The library now drives the board: everything the reference firmware did is here,
+behind an API a sketch can use.
+
 ### Added
 
-- **Zero-configuration install.** Declaring only this library is enough:
-  LVGL is pulled in as a declared dependency, and if the project supplies no
-  `lv_conf.h` the library installs a validated default where LVGL looks for one.
-  A project that provides its own configuration keeps it — the library never
-  overwrites an existing file.
+- **`WuaDVI` board class (L0).** `begin()` releases the display engine's strap
+  pins, starts the SPI bus, brings the RP2354B up (flashing it when its firmware
+  differs) and starts LVGL; `loop()` pumps LVGL, streams what it redrew and
+  watches the engine's health, rebuilding the pipeline if it resets — the
+  application's LVGL objects survive that and are simply repainted.
+- **Transport and engine management (L1)**: ROM UART boot flashing, the control
+  link, the dirty-rectangle stream with its telemetry back-channel.
+- **Widget primitives (L2)**: `wua_tile`, `wua_gauge`, `wua_meter`, `wua_clock`,
+  `wua_label`, `wua_value_label` — all sized as percentages and resolved for the
+  active resolution.
+- **Theming.** Colours moved out of the primitives into a `wua_theme_t` the
+  application supplies. `wua_theme_set()` **rejects** a palette that would be
+  unusable in the monochrome modes, where every colour collapses to one bit by
+  luminance — an invisible interface is caught at startup instead of after
+  switching resolution.
+- **Zero-configuration install.** Declaring only this library is enough: LVGL is
+  pulled in as a declared dependency, and if the project supplies no `lv_conf.h`
+  the library installs a validated default where LVGL looks for one. A project
+  that provides its own keeps it — the library never overwrites an existing file.
+- **Full RP2354B payload embedding**: the pinned release is downloaded,
+  verified against its SHA-256, converted from UF2 to the flat flash image and
+  emitted as a C array, with a guard that refuses an image missing any of the
+  five display modes.
+- **A default resolution.** A sketch that sets no `-DWUADVI_RES_*` gets
+  `640x480x1`, the mode with the most scanout margin, so the library works out
+  of the box.
+
+### Known limitations
+
+- **Arduino IDE builds do not work yet.** The IDE cannot run library build
+  scripts, which is how the firmware payload is produced. Use PlatformIO.
+- Resolution is still a build-time flag; runtime selection is planned for 0.3.0.
+
+[0.2.0]: https://github.com/wualink/WuaDVI-lib/releases/tag/v0.2.0
 
 ## [0.1.0] - 2026-07-28
 

@@ -5,11 +5,9 @@ LVGL widgets that adapt themselves to every supported resolution.
 
 Wualink, member of Wualabs — [wualabs.com](https://wualabs.com)
 
-> **Status: 0.1.0 — early skeleton.** The packaging and RP-firmware machinery
-> described below is implemented and verified; the board API and widget
-> primitives are being extracted from the reference firmware and land in 0.2.0.
-> The API shown in this README is the target and may still shift. See
-> [Roadmap](#roadmap).
+> **Status: 0.2.0.** The board API, transport and widget primitives are in
+> place and build against the reference hardware. Resolution is still a build
+> flag; runtime selection lands in 0.3.0. See [Roadmap](#roadmap).
 
 ---
 
@@ -72,14 +70,14 @@ void setup() {
 
     // Brings up the RP2354B (flashing it if needed), negotiates the mode,
     // starts LVGL and the rect stream.
-    if (!dvi.begin(WUADVI_RES_640x480x1)) {
+    if (!dvi.begin()) {
         Serial.println(dvi.lastError());
         return;
     }
 
     lv_obj_t *tile = wua_tile(lv_screen_active(), "Hello", 90, 60,
-                              lv_color_hex(0x0E5A50));
-    wua_label(tile, "WuaDVI", 12, WUA_COLOR_TEXT);
+                              wua_theme()->tile);
+    wua_label(tile, "WuaDVI", 12, wua_theme()->accent);
 }
 
 void loop() {
@@ -97,7 +95,7 @@ One line. LVGL is installed for you, and so is the pinned display-engine
 firmware:
 
 ```ini
-lib_deps = https://github.com/wualink/WuaDVI-lib.git#v0.1.0
+lib_deps = https://github.com/wualink/WuaDVI-lib.git#v0.2.0
 ```
 
 Pin an exact version rather than a floating range — this library pins the
@@ -114,14 +112,12 @@ Download a release ZIP and use **Sketch → Include Library → Add .ZIP Library
 or clone into your `libraries/` folder. Install **LVGL 9.x** from the Library
 Manager as well.
 
-> **⚠️ One difference in the Arduino IDE.** The Arduino build system cannot run
-> library build scripts, so the automatic download of the RP2354B firmware is
-> **PlatformIO-only**. In the Arduino IDE the library uses the firmware image
-> committed to `src/generated/`, which is refreshed by the maintainers on each
-> release. Everything else behaves identically. If you need a different
-> display-engine firmware than the one shipped, use PlatformIO or flash the RP
-> manually — see
-> [WuaDVI-rp-lite](https://github.com/wualink/WuaDVI-rp-lite).
+> **⚠️ Arduino IDE support is not complete yet.** The Arduino build system
+> cannot run library build scripts, and this library relies on one to fetch and
+> embed the RP2354B firmware — so an Arduino IDE build currently fails on the
+> missing payload. **Use PlatformIO for now.** Shipping a pre-generated payload
+> in the repository, which would make the Arduino IDE work identically, is
+> tracked for a coming release.
 
 ---
 
@@ -229,8 +225,8 @@ use this happens once and is invisible.
 
 | Version | Contents |
 |---|---|
-| **0.1.0** | Packaging, RP firmware pinning and build hook — **current** |
-| 0.2.0 | Board API (L0), transport (L1), widget primitives (L2) extracted from the reference firmware |
+| 0.1.0 | Packaging, RP firmware pinning and build hook |
+| **0.2.0** | Board API (L0), transport (L1), widget primitives (L2) and theming — **current** |
 | 0.3.0 | Runtime resolution selection |
 | 1.0.0 | Stable API |
 
