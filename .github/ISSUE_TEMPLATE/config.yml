@@ -1,0 +1,9 @@
+# Force contributors through the forms above; no blank issues.
+blank_issues_enabled: false
+contact_links:
+  - name: WuaDVI-rp-lite (RP2354B display-engine firmware)
+    url: https://github.com/wualink/WuaDVI-rp-lite/issues
+    about: For the DVI signal, the monochrome modes, resolutions or the RP itself.
+  - name: Security vulnerability
+    url: mailto:security@wualabs.com
+    about: Please report security issues privately by email, not as a public issue.

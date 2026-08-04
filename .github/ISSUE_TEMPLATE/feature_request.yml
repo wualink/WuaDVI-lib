@@ -1,0 +1,60 @@
+name: Feature request
+description: Suggest a feature or improvement for WuaDVI-lib.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! Tell us the **problem** you're trying to solve, not
+        only the solution you have in mind — the underlying need often points to
+        a better fit. For anything large, an issue like this before a PR saves
+        everyone rework.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you start
+      options:
+        - label: I searched existing issues and this isn't already proposed.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What are you trying to achieve? What's missing or awkward today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Sketches of the API you'd like, alternatives you considered.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - "Board API (begin/loop/status)"
+        - "RP2354B management (flashing, pinning, versions)"
+        - "Transport (SPI rect stream, telemetry)"
+        - "LVGL binding / rendering"
+        - "Widget primitives and theming"
+        - "Packaging (PlatformIO / Arduino IDE)"
+        - "Documentation / examples"
+        - "Other / not sure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+    validations:
+      required: false

@@ -1,0 +1,109 @@
+name: Bug report
+description: Something in WuaDVI-lib is not working as expected.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. The more of this you fill in, the faster we can
+        help. If the problem is with the DVI signal itself, the monochrome modes
+        or the RP's resolutions, it likely belongs in
+        [WuaDVI-rp-lite](https://github.com/wualink/WuaDVI-rp-lite).
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you start
+      options:
+        - label: I searched existing issues and this isn't a duplicate.
+          required: true
+        - label: This is about the library, not the RP display-engine firmware.
+          required: true
+
+  - type: input
+    id: lib-version
+    attributes:
+      label: WuaDVI-lib version
+      placeholder: "0.1.0 (or a commit SHA)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: toolchain
+    attributes:
+      label: Toolchain
+      description: The RP firmware auto-download is PlatformIO-only, so this matters.
+      options:
+        - PlatformIO
+        - Arduino IDE
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: resolution
+    attributes:
+      label: Resolution / mode
+      options:
+        - "320x240 (RGB565)"
+        - "400x240 (RGB565)"
+        - "640x480x1 (mono)"
+        - "800x600x1 (mono)"
+        - "1280x720x1 (mono, 30 Hz)"
+        - "Not displaying / not reached yet"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you observe, and what did you expect instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Sketch / example used …
+        2. Build with …
+        3. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: sketch
+    attributes:
+      label: Minimal sketch that shows the problem
+      render: cpp
+    validations:
+      required: false
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Serial log (USB-CDC, 115200)
+      description: Paste the output around the failure.
+      render: text
+    validations:
+      required: false
+
+  - type: input
+    id: lvgl
+    attributes:
+      label: LVGL version
+      placeholder: "9.5.0"
+    validations:
+      required: false
+
+  - type: input
+    id: monitor
+    attributes:
+      label: Monitor / display
+      description: Useful for signal-lock and refresh-rate issues.
+      placeholder: "Dell U2412M over HDMI"
+    validations:
+      required: false

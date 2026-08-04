@@ -1,0 +1,71 @@
+#######################################
+# Syntax coloring map for WuaDVI-lib
+#
+# Arduino IDE reads this file to highlight the library's API.
+# Columns are separated by a single TAB, never spaces.
+#   KEYWORD1 - classes and datatypes      (orange)
+#   KEYWORD2 - methods and functions      (brown)
+#   LITERAL1 - constants and enum values  (blue)
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+WuaDVI	KEYWORD1
+wua_theme_t	KEYWORD1
+wua_gauge_t	KEYWORD1
+wua_meter_t	KEYWORD1
+wua_resolution_t	KEYWORD1
+
+#######################################
+# Methods and functions (KEYWORD2)
+#######################################
+
+# Board (L0)
+begin	KEYWORD2
+loop	KEYWORD2
+ready	KEYWORD2
+resolution	KEYWORD2
+temperature	KEYWORD2
+lastError	KEYWORD2
+stats	KEYWORD2
+
+# RP2354B firmware payload
+wuadvi_rp_firmware_version	KEYWORD2
+
+# Theme
+wua_theme_set	KEYWORD2
+
+# Widget primitives (L2)
+wua_ui_init	KEYWORD2
+wua_pad	KEYWORD2
+wua_font_fit	KEYWORD2
+wua_container	KEYWORD2
+wua_label	KEYWORD2
+wua_value_label	KEYWORD2
+wua_tile	KEYWORD2
+wua_gauge	KEYWORD2
+wua_gauge_set	KEYWORD2
+wua_meter	KEYWORD2
+wua_meter_set	KEYWORD2
+wua_clock	KEYWORD2
+wua_clock_set	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
+WUADVI_RES_320x240	LITERAL1
+WUADVI_RES_400x240	LITERAL1
+WUADVI_RES_640x480x1	LITERAL1
+WUADVI_RES_800x600x1	LITERAL1
+WUADVI_RES_1280x720x1	LITERAL1
+
+WUA_THEME_DEFAULT	LITERAL1
+WUA_COLOR_BG	LITERAL1
+WUA_COLOR_TILE	LITERAL1
+WUA_COLOR_TEXT	LITERAL1
+WUA_COLOR_DIM	LITERAL1
+WUA_COLOR_ACCENT	LITERAL1
+WUA_COLOR_TRACK	LITERAL1

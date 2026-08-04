@@ -1,0 +1,39 @@
+# clang-format configuration for WuaDVI-lib.
+#
+# Same house style as the rest of the WuaDVI firmware family: 4-space indent,
+# K&R (attached) braces, pointer bound to the name, short accessors on one line.
+# CI enforces it (see .github/workflows/ci.yml).
+#
+# Format the tree in place with:
+#   clang-format -i src/*.h src/*.cpp
+# Check without modifying (what CI runs):
+#   clang-format --dry-run --Werror src/*.h src/*.cpp
+#
+# ColumnLimit is 0 on purpose: the code is hand-wrapped at ~80 columns, and
+# letting clang-format re-wrap by length mangles documented #define blocks
+# (it splits them across backslash continuations).  With no column limit it
+# normalizes spacing, indentation and braces without touching line breaks.
+#
+# Blocks with hand-aligned tables are fenced with "// clang-format off/on".
+---
+Language:                             Cpp
+BasedOnStyle:                         LLVM
+IndentWidth:                          4
+TabWidth:                             4
+UseTab:                               Never
+ColumnLimit:                          0
+PointerAlignment:                     Right
+DerivePointerAlignment:               false
+BreakBeforeBraces:                    Attach
+AllowShortFunctionsOnASingleLine:     All
+AllowShortCaseLabelsOnASingleLine:    true
+AllowShortIfStatementsOnASingleLine:  false
+AllowShortLoopsOnASingleLine:         false
+AllowShortBlocksOnASingleLine:        Empty
+IndentCaseLabels:                     false
+ReflowComments:                       false
+SortIncludes:                         Never
+AlignConsecutiveMacros:               Consecutive
+SpaceAfterCStyleCast:                 false
+MaxEmptyLinesToKeep:                  1
+KeepEmptyLinesAtTheStartOfBlocks:     false
