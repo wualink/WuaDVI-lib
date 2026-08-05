@@ -123,6 +123,23 @@ lv_obj_t *wua_container(lv_obj_t *parent) {
     return c;
 }
 
+lv_obj_t *wua_column(lv_obj_t *parent) {
+    lv_obj_t *c = wua_container(parent);
+    lv_obj_set_flex_flow(c, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_style_pad_row(c, s_pad, 0);
+    /* Content height, so a column never takes room a growing sibling needs. */
+    lv_obj_set_height(c, LV_SIZE_CONTENT);
+    return c;
+}
+
+lv_obj_t *wua_row(lv_obj_t *parent) {
+    lv_obj_t *c = wua_container(parent);
+    lv_obj_set_flex_flow(c, LV_FLEX_FLOW_ROW_WRAP);
+    lv_obj_set_style_pad_row(c, s_pad, 0);
+    lv_obj_set_style_pad_column(c, s_pad, 0);
+    return c;
+}
+
 lv_obj_t *wua_label(lv_obj_t *parent, const char *text,
                     int32_t height_pct, lv_color_t color) {
     lv_obj_t *l = lv_label_create(parent);

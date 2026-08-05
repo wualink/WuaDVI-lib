@@ -16,7 +16,13 @@ lines move under a new version heading.
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- `wua_column()` and `wua_row()` — containers that carry a layout. Found on
+  hardware: `wua_container()` has none, so its children all land at the same
+  position and silently overlap, and an unlaid-out container also takes room
+  from a sibling meant to grow. Both primitives size themselves sensibly, so
+  the common case stops being a trap.
 
 ## [0.3.0] - 2026-08-04
 

@@ -123,6 +123,32 @@ const lv_font_t *wua_font_fit(int32_t px);
 lv_obj_t *wua_container(lv_obj_t *parent);
 
 /**
+ * @brief Container that stacks its children vertically, with the standard gap.
+ *
+ * Prefer this over wua_container() whenever a container has more than one
+ * child: wua_container() carries NO layout, so its children all land at the
+ * same position and silently overlap.
+ *
+ * Height defaults to its content, so it takes exactly the room its children
+ * need and never steals space from a sibling that is meant to grow.
+ *
+ * @param parent  Parent object.
+ * @return The new container.
+ */
+lv_obj_t *wua_column(lv_obj_t *parent);
+
+/**
+ * @brief Container that lays its children out in a row, wrapping as needed.
+ *
+ * The row counterpart of wua_column(); same reasoning. Useful as a tile grid,
+ * where it wraps tiles onto as many lines as their widths need.
+ *
+ * @param parent  Parent object.
+ * @return The new container.
+ */
+lv_obj_t *wua_row(lv_obj_t *parent);
+
+/**
  * @brief Styled text label with the font picked from a screen-height ratio.
  * @param parent      Parent object.
  * @param text        Initial text.
