@@ -24,6 +24,13 @@ lines move under a new version heading.
   from a sibling meant to grow. Both primitives size themselves sensibly, so
   the common case stops being a trap.
 
+### Verified
+
+- **0.3.0 validated on hardware**: all five display modes bring up and render,
+  the runtime mode switch works end to end (store, restart, re-negotiate,
+  repaint), the widget primitives keep their proportions across every mode, and
+  the telemetry readout tracks the engine temperature.
+
 ## [0.3.0] - 2026-08-04
 
 ### Added

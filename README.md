@@ -5,9 +5,9 @@ LVGL widgets that adapt themselves to every supported resolution.
 
 Wualink, member of Wualabs — [wualabs.com](https://wualabs.com)
 
-> **Status: 0.3.0.** The board API, transport, widget primitives and runtime
-> resolution selection are in place. Not yet verified on hardware after the
-> extraction — see [Roadmap](#roadmap).
+> **Status: 0.3.0 — validated on hardware.** The board API, transport, widget
+> primitives and runtime resolution selection all work on the WuaDVI board, in
+> every one of the five display modes. See [Roadmap](#roadmap).
 
 ---
 
