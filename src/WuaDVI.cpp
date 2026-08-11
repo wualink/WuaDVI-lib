@@ -109,8 +109,19 @@ bool WuaDVI::begin(wua_resolution_id_t res) {
     /* A mode stored by setResolution() wins over the argument: that is what
      * makes the change persist across the restart it performs. */
     wua_resolution_id_t stored;
-    if (storedResolution(&stored))
+    if (storedResolution(&stored)) {
+        if (stored != res) {
+            /* Say so.  Silently ignoring an explicit argument is how a sketch
+             * that asks for 800x600 comes up at 640x480 with no explanation —
+             * and how every demo in a catalogue looks identical. */
+            const wua_resolution_t *s_r = wua_resolution_by_id((uint8_t)stored);
+            const wua_resolution_t *a_r = wua_resolution_by_id((uint8_t)res);
+            Serial.printf("[WuaDVI] using the stored mode %s instead of %s "
+                          "(press 'c' on the console to forget it)\n",
+                          s_r ? s_r->name : "?", a_r ? a_r->name : "?");
+        }
         res = stored;
+    }
 
     if (!wua_resolution_set_active((uint8_t)res)) {
         m_error = "unknown display mode";
@@ -162,4 +173,57 @@ uint32_t WuaDVI::rectsFailed(void) const {
 
 const char *WuaDVI::displayEngineVersion(void) {
     return RP_PAYLOAD_VERSION_STRING;
+}
+
+void WuaDVI::printConsoleHelp(void) {
+    Serial.println();
+    Serial.println("  ── WuaDVI display mode ─────────────────────────");
+    Serial.println("   1  320x240 RGB565      4  800x600 mono");
+    Serial.println("   2  400x240 RGB565      5  1280x720 mono (30 Hz)");
+    Serial.println("   3  640x480 mono");
+    Serial.println("   c  forget the stored mode   i  status   ?  this list");
+    Serial.println("  Switching stores the mode and restarts the board.");
+}
+
+bool WuaDVI::consoleKey(char key) {
+    switch (key) {
+    case '1': setResolution(WUA_RES_320x240); return true; /* restarts */
+    case '2': setResolution(WUA_RES_400x240); return true;
+    case '3': setResolution(WUA_RES_640x480x1); return true;
+    case '4': setResolution(WUA_RES_800x600x1); return true;
+    case '5': setResolution(WUA_RES_1280x720x1); return true;
+
+    case 'c':
+    case 'C':
+        clearStoredResolution();
+        Serial.println("\n  stored mode forgotten - restart to use the mode "
+                       "this sketch asks for");
+        return true;
+
+    case 'i':
+    case 'I': {
+        int16_t t;
+        wua_resolution_id_t stored;
+        Serial.printf("\n  mode     : %s (%ux%u)\n", resolutionName(), width(),
+                      height());
+        Serial.printf("  stored   : %s\n",
+                      storedResolution(&stored)
+                          ? wua_resolution_by_id((uint8_t)stored)->name
+                          : "(none - this sketch's choice is used)");
+        Serial.printf("  engine   : v%s", displayEngineVersion());
+        if (temperature(&t))
+            Serial.printf(", %d.%d C", t / 10, abs(t % 10));
+        Serial.println();
+        Serial.printf("  packets  : %lu sent, %lu failed\n",
+                      (unsigned long)rectsSent(), (unsigned long)rectsFailed());
+        Serial.printf("  heap     : %u B\n", ESP.getFreeHeap());
+        return true;
+    }
+
+    case '?':
+    case 'h':
+    case 'H': printConsoleHelp(); return true;
+
+    default: return false; /* not ours - the sketch may want it */
+    }
 }

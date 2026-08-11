@@ -88,6 +88,29 @@ class WuaDVI {
     static void clearStoredResolution(void);
 
     /**
+     * @brief Handle one keypress from the serial console.
+     *
+     * Gives any sketch a way to change the display mode without a rebuild —
+     * drop this in your loop() and the board answers on the serial monitor:
+     *
+     * @code
+     *   while (Serial.available() > 0)
+     *       dvi.consoleKey((char)Serial.read());
+     * @endcode
+     *
+     * Keys: `1`..`5` switch mode (stores and restarts), `c` forgets the stored
+     * mode, `i` prints status, `?` prints this list. Anything else is ignored,
+     * so a sketch can read its own keys from the same stream.
+     *
+     * @param key  Character received.
+     * @return true if the key was one of ours.
+     */
+    bool consoleKey(char key);
+
+    /** @brief Print the console key list to Serial. */
+    static void printConsoleHelp(void);
+
+    /**
      * @brief Service the board. Call from your loop(), as often as possible.
      *
      * Pumps LVGL, streams whatever it redrew, and watches the display engine's
