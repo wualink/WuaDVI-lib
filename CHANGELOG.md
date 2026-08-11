@@ -26,21 +26,35 @@ lines move under a new version heading.
 
 ### Changed
 
-- **`begin(res)` now honours its argument.** Previously a mode saved by
-  `setResolution()` outranked it *permanently*, so once any sketch had switched
-  mode, every sketch flashed afterwards silently came up in that mode. Found on
-  hardware: four demos each asking for a different resolution all displayed the
-  same one. The mode `setResolution()` requests is now a one-shot consumed by
-  the restart it performs, so the resolution is decided by the function the
-  application calls and by nothing else.
+- **`setResolution()` is now the one function that decides the resolution, and
+  `begin()` takes no argument.** Called in `setup()` before `begin()` it simply
+  selects the mode — nothing is displaying, so there is nothing to tear down
+  and no restart. Called after `begin()` it is a change rather than a choice,
+  and restarts into the new mode as before.
+
+  This replaces `begin(res)`, which had two problems. A mode saved by
+  `setResolution()` used to outrank its argument *permanently*, so once any
+  sketch had switched mode every sketch flashed afterwards silently came up in
+  that mode — found on hardware, where four demos each asking for a different
+  resolution all displayed the same one. And with the mode settable from two
+  places, which one won was never obvious. Now the request `setResolution()`
+  makes from a running sketch is a one-shot consumed by the restart it
+  performs, and it is the only thing that can outrank `setup()`.
 
 ### Removed
 
 - `storedResolution()` and `clearStoredResolution()`. With a one-shot request
   there is no stored mode to read or forget, and persistence across power
   cycles is a policy the application should own — the README shows the ten
-  lines that implement it. Resolution is now exactly two calls: `begin(res)`
-  and `setResolution(res)`.
+  lines that implement it.
+- The `res` parameter of `begin()`. `setResolution()` selects the mode.
+
+### Planned
+
+- Changing mode **without** a restart, as a separate call. It cannot be
+  `setResolution()`: the widget primitives resolve their pixel sizes when they
+  are created, so an in-place switch requires the application to rebuild its
+  own widgets — which is precisely what the restart does for it today.
 
 ### Verified
 

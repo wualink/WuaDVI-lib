@@ -25,7 +25,8 @@ void setup() {
     Serial.printf("\nWuaDVI %s — display engine v%s\n",
                   dvi.resolutionName(), WuaDVI::displayEngineVersion());
 
-    if (!dvi.begin(WUA_RES_640x480x1)) {
+    dvi.setResolution(WUA_RES_640x480x1);
+    if (!dvi.begin()) {
         Serial.printf("[ERROR] %s\n", dvi.lastError());
         return; /* loop() keeps retrying */
     }

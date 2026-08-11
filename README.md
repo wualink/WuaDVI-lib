@@ -68,9 +68,10 @@ WuaDVI dvi;
 void setup() {
     Serial.begin(115200);
 
-    // Brings up the RP2354B (flashing it if needed), negotiates the mode,
-    // starts LVGL and the rect stream.
-    if (!dvi.begin(WUA_RES_640x480x1)) {
+    // Pick the display mode, then bring the board up: the RP2354B (flashed
+    // if needed), the mode negotiation, LVGL and the rect stream.
+    dvi.setResolution(WUA_RES_640x480x1);
+    if (!dvi.begin()) {
         Serial.println(dvi.lastError());
         return;
     }
@@ -176,41 +177,61 @@ something ordinary, that is a gap in L0 — please open an issue.
 
 ### Choosing the display mode
 
-The mode is a runtime value, not a build flag:
+The mode is a runtime value, not a build flag, and **one function decides it**.
+Call it in `setup()`, before `begin()`:
 
 ```cpp
-dvi.begin(WUA_RES_800x600x1);      // start in a mode
-
-dvi.setResolution(WUA_RES_1280x720x1);   // change it — stores and restarts
+void setup() {
+    dvi.setResolution(WUA_RES_800x600x1);
+    dvi.begin();
+}
 ```
 
-`setResolution()` **does not return**: it saves the mode and restarts the
-board. That is not a shortcut — the display engine reboots into a new mode
-anyway (its clocks and framebuffer are fixed once scanout starts), and this
-side has to resize its render buffer and rebuild the interface regardless.
-Restarting both together is the one sequence that is always consistent.
+Nothing is displaying yet, so that is all it does: select the mode. `begin()`
+then brings the board up in it. A sketch that never calls `setResolution()` runs
+at 640×480 mono, the mode with the most scanout margin.
 
-**Your argument always wins.** `begin(res)` starts in `res`, every time. The
-single exception is the restart `setResolution()` just performed: that request
-is honoured once and then cleared, which is what makes the switch take effect.
-Nothing outlives it, so the library can never quietly come up in a mode your
-sketch did not ask for.
+#### Changing it while the board is running
 
-That also means a power cycle returns to whatever your `begin()` asks for. If a
-choice should survive one, the application owns it — store it and pass it in:
+The same call, after `begin()`, is a *change* rather than a choice — and it
+**does not return**:
+
+```cpp
+dvi.setResolution(WUA_RES_1280x720x1);   // restarts into 1280x720
+```
+
+It restarts the board, `setup()` runs again, and the mode you asked for wins
+over the one `setup()` selects. That request is consumed by exactly that
+restart, so a power cycle comes back up in whatever `setup()` says — a sketch
+always looks the way it was written to look.
+
+The restart is not a shortcut. The display engine reboots to change mode (its
+clocks and framebuffer are fixed once scanout starts), this side has to resize
+its render buffer, and the widget primitives resolve their pixel sizes when
+they are created — so the interface has to be rebuilt at the new size
+regardless. Restarting both ends together is the one sequence that is always
+consistent, and it puts the rebuild in `setup()`, where it already lives.
+
+> **Planned:** changing mode *without* a restart, as a separate call. It cannot
+> be this one — it requires the application to rebuild its own widgets, which
+> is exactly what the restart does for you.
+
+If a choice should survive a power cycle, the application owns that policy —
+store it and select it on the way up:
 
 ```cpp
 Preferences prefs;
 
 void setup() {
     prefs.begin("app");
-    dvi.begin((wua_resolution_id_t)prefs.getUChar("res", WUA_RES_640x480x1));
-    // ...
+    dvi.setResolution(
+        (wua_resolution_id_t)prefs.getUChar("res", WUA_RES_640x480x1));
+    dvi.begin();
 }
 
 void pick(wua_resolution_id_t res) {
     prefs.putUChar("res", (uint8_t)res);
-    dvi.setResolution(res);            // restarts; setup() reads it back
+    dvi.setResolution(res);            // restarts; setup() selects it next time
 }
 ```
 

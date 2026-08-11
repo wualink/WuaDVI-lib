@@ -53,43 +53,48 @@ class WuaDVI {
      *
      * Safe to call again after a failure — it retries the whole sequence.
      *
-     * The mode is whatever you pass, every time. The one exception is a switch
-     * requested by setResolution(): that is honoured once, on the restart it
-     * performs, and then forgotten.
+     * Runs in whatever mode setResolution() last selected, or 640x480 mono if
+     * it was never called. The resolution belongs to setResolution(); begin()
+     * takes no say in it.
      *
-     * @param res  Mode to start in.
      * @return true when the display is running; false with lastError() set.
      */
-    bool begin(wua_resolution_id_t res = WUA_RES_640x480x1);
+    bool begin(void);
 
     /**
-     * @brief Change the display mode, at runtime, from your code.
+     * @brief Select the display mode. The one function that decides it.
      *
-     * The one function that changes resolution:
+     * Call it in setup(), before begin(), and it simply sets the mode the
+     * board is about to run in — nothing is displaying yet, so nothing has to
+     * be torn down:
      *
      * @code
-     *   dvi.setResolution(WUA_RES_1280x720x1);
+     *   void setup() {
+     *       dvi.setResolution(WUA_RES_800x600x1);
+     *       dvi.begin();
+     *   }
      * @endcode
      *
-     * **This call does not return.** It latches the mode and reboots the
-     * ESP32, and the next begin() comes up in it.
+     * Call it **after** begin() and it is a change rather than a choice, so it
+     * restarts the board into the new mode and **does not return**. setup()
+     * runs again, and the mode you asked for wins over the one it selects.
      *
-     * The restart is how the mode changes rather than an implementation
-     * shortcut: the display engine itself reboots into a new mode (its clocks
-     * and framebuffer are fixed once its scanout starts), this side has to
-     * resize the render buffer, and the widget primitives resolve their pixel
-     * sizes when they are created — so the interface has to be rebuilt at the
-     * new size regardless. Restarting both ends together is the one sequence
-     * that is always consistent, and it puts the rebuild in your setup(),
-     * where it already lives.
+     * The restart is not an implementation shortcut: the display engine
+     * reboots to change mode (its clocks and framebuffer are fixed once
+     * scanout starts), this side has to resize the render buffer, and the
+     * widget primitives resolve their pixel sizes when they are created — so
+     * the interface has to be rebuilt at the new size regardless. Restarting
+     * both ends together is the one sequence that is always consistent, and it
+     * puts the rebuild in setup(), where it already lives.
      *
-     * The latch is consumed by that next begin() and does not persist beyond
-     * it: a power cycle brings the board up in whatever mode your begin() asks
-     * for. To remember a choice across power cycles, store it yourself and
-     * pass it in — see the README.
+     * A mode changed this way survives that one restart and no more: a power
+     * cycle comes up in whatever setup() selects. Changing mode without a
+     * restart is planned and will be a separate call — it needs the
+     * application to rebuild its own widgets, which this one avoids.
      *
-     * @param res  Mode to switch to.
-     * @return Only on failure — false if @p res is not a valid mode.
+     * @param res  Mode to run in.
+     * @return true when selected before begin(); false if @p res is not a
+     *         valid mode. Does not return when called after begin().
      */
     bool setResolution(wua_resolution_id_t res);
 

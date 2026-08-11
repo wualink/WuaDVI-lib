@@ -60,14 +60,14 @@ bool WuaDVI::startPipeline(void) {
     return true;
 }
 
-/* Where setResolution() leaves the mode for the restart it performs.
+/* Where a mode change made from a RUNNING sketch is left for the restart it
+ * performs.  Only that case uses this — a setResolution() in setup() selects
+ * the mode directly and never touches NVS.
  *
- * A ONE-SHOT, not a saved setting: begin() consumes it and clears it.  The
- * library does not get to decide the resolution — the application does, by
- * what it passes to begin() — and a latch that outlived its restart would
- * quietly override that argument forever.  That is not hypothetical: it is how
- * a catalogue of demos each asking for a different mode all came up in the
- * same one.
+ * A ONE-SHOT: begin() consumes it and clears it.  A latch that outlived its
+ * restart would override the sketch's own setup() forever, which is not
+ * hypothetical — it is how a catalogue of demos each selecting a different
+ * mode all came up in the same one.
  *
  * NVS rather than RTC memory because the reset path must survive a brownout
  * mid-restart, not only a clean reboot. */
@@ -97,6 +97,16 @@ bool WuaDVI::setResolution(wua_resolution_id_t res) {
         return false;
     }
 
+    /* Before begin(): nothing is displaying, so selecting the mode is all
+     * there is to do.  This is the setup() case, and the common one. */
+    if (!m_lvgl_started) {
+        wua_resolution_set_active((uint8_t)res);
+        m_error = "";
+        return true;
+    }
+
+    /* After begin(): the mode is already live and cannot be changed under a
+     * running scanout, so hand it to the restart. */
     Preferences prefs;
     if (!prefs.begin(WUADVI_NVS_NAMESPACE, false)) {
         m_error = "cannot open storage to request the display mode";
@@ -110,14 +120,18 @@ bool WuaDVI::setResolution(wua_resolution_id_t res) {
     return true; /* not reached */
 }
 
-bool WuaDVI::begin(wua_resolution_id_t res) {
-    /* The argument decides, except for the one restart setResolution() asked
-     * for — that request is honoured here and cleared in the same breath. */
+bool WuaDVI::begin(void) {
+    /* Normally the mode is whatever setResolution() selected in setup() — or
+     * the table default if it was never called.  The exception is a change
+     * requested from a running sketch: that restart brought us back through
+     * setup(), whose setResolution() call has just re-selected the OLD mode,
+     * so the request has to win here.  It is consumed in the same breath, so
+     * it wins exactly once and a power cycle follows setup() again. */
     wua_resolution_id_t pending;
-    if (take_pending_resolution(&pending))
-        res = pending;
+    const uint8_t id = take_pending_resolution(&pending) ? (uint8_t)pending
+                                                         : wua_resolution()->id;
 
-    if (!wua_resolution_set_active((uint8_t)res)) {
+    if (!wua_resolution_set_active(id)) {
         m_error = "unknown display mode";
         return false;
     }
