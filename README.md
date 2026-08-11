@@ -194,6 +194,29 @@ The stored mode wins over the argument to `begin()`, so a sketch written as
 `dvi.begin()` follows whatever was last chosen. `WuaDVI::storedResolution()`
 reads it and `WuaDVI::clearStoredResolution()` forgets it.
 
+> **Worth knowing before it surprises you.** That precedence applies to *every*
+> sketch, so once a mode has been stored, the next sketch you flash comes up in
+> it and its own `begin()` argument is ignored. `begin()` prints a line saying
+> so. Clear it with `clearStoredResolution()`, or press `c` on the console
+> below.
+
+#### A console for free
+
+Rather than wiring your own mode switcher, forward serial keys to the library:
+
+```cpp
+void loop() {
+    dvi.loop();
+    while (Serial.available() > 0)
+        dvi.consoleKey((char)Serial.read());
+}
+```
+
+`1`–`5` select a mode, `c` forgets the stored one, `i` prints status, `?` lists
+the keys — and `WuaDVI::printConsoleHelp()` shows the list at startup.
+`consoleKey()` returns `false` for anything it does not recognise, so a sketch
+that reads its own commands can share the same stream.
+
 ### Theming
 
 The primitives carry the *mechanism* (resolution-independent sizing, the
