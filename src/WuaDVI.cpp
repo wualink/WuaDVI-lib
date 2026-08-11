@@ -60,30 +60,35 @@ bool WuaDVI::startPipeline(void) {
     return true;
 }
 
-/* Where setResolution() stores its choice.  NVS, not RTC memory: the mode must
- * survive a power cycle, not only a reset. */
-#define WUADVI_NVS_NAMESPACE "wuadvi"
-#define WUADVI_NVS_KEY_RES   "res"
+/* Where setResolution() leaves the mode for the restart it performs.
+ *
+ * A ONE-SHOT, not a saved setting: begin() consumes it and clears it.  The
+ * library does not get to decide the resolution — the application does, by
+ * what it passes to begin() — and a latch that outlived its restart would
+ * quietly override that argument forever.  That is not hypothetical: it is how
+ * a catalogue of demos each asking for a different mode all came up in the
+ * same one.
+ *
+ * NVS rather than RTC memory because the reset path must survive a brownout
+ * mid-restart, not only a clean reboot. */
+#define WUADVI_NVS_NAMESPACE   "wuadvi"
+#define WUADVI_NVS_KEY_PENDING "pending"
 
-bool WuaDVI::storedResolution(wua_resolution_id_t *out_res) {
+/** Read and clear the pending switch. @return false when none is waiting. */
+static bool take_pending_resolution(wua_resolution_id_t *out_res) {
     Preferences prefs;
-    if (!prefs.begin(WUADVI_NVS_NAMESPACE, true /* read-only */))
+    if (!prefs.begin(WUADVI_NVS_NAMESPACE, false))
         return false;
-    const uint8_t id = prefs.getUChar(WUADVI_NVS_KEY_RES, 0);
+    const uint8_t id = prefs.getUChar(WUADVI_NVS_KEY_PENDING, 0);
+    if (id != 0)
+        prefs.remove(WUADVI_NVS_KEY_PENDING);
     prefs.end();
+
     if (id == 0 || wua_resolution_by_id(id) == nullptr)
         return false;
     if (out_res != nullptr)
         *out_res = (wua_resolution_id_t)id;
     return true;
-}
-
-void WuaDVI::clearStoredResolution(void) {
-    Preferences prefs;
-    if (!prefs.begin(WUADVI_NVS_NAMESPACE, false))
-        return;
-    prefs.remove(WUADVI_NVS_KEY_RES);
-    prefs.end();
 }
 
 bool WuaDVI::setResolution(wua_resolution_id_t res) {
@@ -94,10 +99,10 @@ bool WuaDVI::setResolution(wua_resolution_id_t res) {
 
     Preferences prefs;
     if (!prefs.begin(WUADVI_NVS_NAMESPACE, false)) {
-        m_error = "cannot open storage to save the display mode";
+        m_error = "cannot open storage to request the display mode";
         return false;
     }
-    prefs.putUChar(WUADVI_NVS_KEY_RES, (uint8_t)res);
+    prefs.putUChar(WUADVI_NVS_KEY_PENDING, (uint8_t)res);
     prefs.end();
 
     delay(50); /* let any pending serial output reach the host */
@@ -106,22 +111,11 @@ bool WuaDVI::setResolution(wua_resolution_id_t res) {
 }
 
 bool WuaDVI::begin(wua_resolution_id_t res) {
-    /* A mode stored by setResolution() wins over the argument: that is what
-     * makes the change persist across the restart it performs. */
-    wua_resolution_id_t stored;
-    if (storedResolution(&stored)) {
-        if (stored != res) {
-            /* Say so.  Silently ignoring an explicit argument is how a sketch
-             * that asks for 800x600 comes up at 640x480 with no explanation —
-             * and how every demo in a catalogue looks identical. */
-            const wua_resolution_t *s_r = wua_resolution_by_id((uint8_t)stored);
-            const wua_resolution_t *a_r = wua_resolution_by_id((uint8_t)res);
-            Serial.printf("[WuaDVI] using the stored mode %s instead of %s "
-                          "(press 'c' on the console to forget it)\n",
-                          s_r ? s_r->name : "?", a_r ? a_r->name : "?");
-        }
-        res = stored;
-    }
+    /* The argument decides, except for the one restart setResolution() asked
+     * for — that request is honoured here and cleared in the same breath. */
+    wua_resolution_id_t pending;
+    if (take_pending_resolution(&pending))
+        res = pending;
 
     if (!wua_resolution_set_active((uint8_t)res)) {
         m_error = "unknown display mode";
@@ -173,57 +167,4 @@ uint32_t WuaDVI::rectsFailed(void) const {
 
 const char *WuaDVI::displayEngineVersion(void) {
     return RP_PAYLOAD_VERSION_STRING;
-}
-
-void WuaDVI::printConsoleHelp(void) {
-    Serial.println();
-    Serial.println("  ── WuaDVI display mode ─────────────────────────");
-    Serial.println("   1  320x240 RGB565      4  800x600 mono");
-    Serial.println("   2  400x240 RGB565      5  1280x720 mono (30 Hz)");
-    Serial.println("   3  640x480 mono");
-    Serial.println("   c  forget the stored mode   i  status   ?  this list");
-    Serial.println("  Switching stores the mode and restarts the board.");
-}
-
-bool WuaDVI::consoleKey(char key) {
-    switch (key) {
-    case '1': setResolution(WUA_RES_320x240); return true; /* restarts */
-    case '2': setResolution(WUA_RES_400x240); return true;
-    case '3': setResolution(WUA_RES_640x480x1); return true;
-    case '4': setResolution(WUA_RES_800x600x1); return true;
-    case '5': setResolution(WUA_RES_1280x720x1); return true;
-
-    case 'c':
-    case 'C':
-        clearStoredResolution();
-        Serial.println("\n  stored mode forgotten - restart to use the mode "
-                       "this sketch asks for");
-        return true;
-
-    case 'i':
-    case 'I': {
-        int16_t t;
-        wua_resolution_id_t stored;
-        Serial.printf("\n  mode     : %s (%ux%u)\n", resolutionName(), width(),
-                      height());
-        Serial.printf("  stored   : %s\n",
-                      storedResolution(&stored)
-                          ? wua_resolution_by_id((uint8_t)stored)->name
-                          : "(none - this sketch's choice is used)");
-        Serial.printf("  engine   : v%s", displayEngineVersion());
-        if (temperature(&t))
-            Serial.printf(", %d.%d C", t / 10, abs(t % 10));
-        Serial.println();
-        Serial.printf("  packets  : %lu sent, %lu failed\n",
-                      (unsigned long)rectsSent(), (unsigned long)rectsFailed());
-        Serial.printf("  heap     : %u B\n", ESP.getFreeHeap());
-        return true;
-    }
-
-    case '?':
-    case 'h':
-    case 'H': printConsoleHelp(); return true;
-
-    default: return false; /* not ours - the sketch may want it */
-    }
 }

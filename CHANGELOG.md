@@ -18,13 +18,6 @@ lines move under a new version heading.
 
 ### Added
 
-- `consoleKey()` and `printConsoleHelp()` — a serial console any sketch can
-  adopt in one line, so the display mode can be changed without a rebuild.
-  Found on hardware: every demo in the catalogue asks for a different mode in
-  `begin()`, yet all of them came up in the same one, and nothing in a demo
-  offered a way to change it. `consoleKey()` returns `false` for a key it does
-  not recognise, so a sketch that reads its own console can share the stream.
-
 - `wua_column()` and `wua_row()` — containers that carry a layout. Found on
   hardware: `wua_container()` has none, so its children all land at the same
   position and silently overlap, and an unlaid-out container also takes room
@@ -33,11 +26,21 @@ lines move under a new version heading.
 
 ### Changed
 
-- `begin()` now **says** when the stored mode overrides its argument, naming
-  both modes and how to clear the stored one. The precedence itself is
-  unchanged — it is what makes `setResolution()` survive the restart it
-  performs — but applying it silently made a sketch that asks for 800×600 come
-  up at 640×480 with no explanation.
+- **`begin(res)` now honours its argument.** Previously a mode saved by
+  `setResolution()` outranked it *permanently*, so once any sketch had switched
+  mode, every sketch flashed afterwards silently came up in that mode. Found on
+  hardware: four demos each asking for a different resolution all displayed the
+  same one. The mode `setResolution()` requests is now a one-shot consumed by
+  the restart it performs, so the resolution is decided by the function the
+  application calls and by nothing else.
+
+### Removed
+
+- `storedResolution()` and `clearStoredResolution()`. With a one-shot request
+  there is no stored mode to read or forget, and persistence across power
+  cycles is a policy the application should own — the README shows the ten
+  lines that implement it. Resolution is now exactly two calls: `begin(res)`
+  and `setResolution(res)`.
 
 ### Verified
 

@@ -190,32 +190,33 @@ anyway (its clocks and framebuffer are fixed once scanout starts), and this
 side has to resize its render buffer and rebuild the interface regardless.
 Restarting both together is the one sequence that is always consistent.
 
-The stored mode wins over the argument to `begin()`, so a sketch written as
-`dvi.begin()` follows whatever was last chosen. `WuaDVI::storedResolution()`
-reads it and `WuaDVI::clearStoredResolution()` forgets it.
+**Your argument always wins.** `begin(res)` starts in `res`, every time. The
+single exception is the restart `setResolution()` just performed: that request
+is honoured once and then cleared, which is what makes the switch take effect.
+Nothing outlives it, so the library can never quietly come up in a mode your
+sketch did not ask for.
 
-> **Worth knowing before it surprises you.** That precedence applies to *every*
-> sketch, so once a mode has been stored, the next sketch you flash comes up in
-> it and its own `begin()` argument is ignored. `begin()` prints a line saying
-> so. Clear it with `clearStoredResolution()`, or press `c` on the console
-> below.
-
-#### A console for free
-
-Rather than wiring your own mode switcher, forward serial keys to the library:
+That also means a power cycle returns to whatever your `begin()` asks for. If a
+choice should survive one, the application owns it — store it and pass it in:
 
 ```cpp
-void loop() {
-    dvi.loop();
-    while (Serial.available() > 0)
-        dvi.consoleKey((char)Serial.read());
+Preferences prefs;
+
+void setup() {
+    prefs.begin("app");
+    dvi.begin((wua_resolution_id_t)prefs.getUChar("res", WUA_RES_640x480x1));
+    // ...
+}
+
+void pick(wua_resolution_id_t res) {
+    prefs.putUChar("res", (uint8_t)res);
+    dvi.setResolution(res);            // restarts; setup() reads it back
 }
 ```
 
-`1`–`5` select a mode, `c` forgets the stored one, `i` prints status, `?` lists
-the keys — and `WuaDVI::printConsoleHelp()` shows the list at startup.
-`consoleKey()` returns `false` for anything it does not recognise, so a sketch
-that reads its own commands can share the same stream.
+Ten lines, and the policy is visible in your code rather than buried in the
+library — which matters, because "remember the last mode" and "always start in
+the mode this sketch is written for" are both correct, for different products.
 
 ### Theming
 

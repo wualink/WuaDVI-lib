@@ -38,19 +38,16 @@ void setup() {
     wua_label(tile, dvi.resolutionName(), 7, wua_theme()->dim);
 
     Serial.printf("[OK] %ux%u running\n", dvi.width(), dvi.height());
-    WuaDVI::printConsoleHelp();
 }
 
 void loop() {
     dvi.loop();
 
-    /* Change resolution from the serial monitor: 1..5 pick a mode, 'c' forgets
-     * the stored one, '?' lists the keys.  Each switch stores the choice and
-     * restarts into it, so setResolution() — which this calls — never returns.
+    /* Changing resolution at runtime is one call.  It restarts the board into
+     * the new mode, so it does not return and setup() runs again:
      *
-     * Keys this does not recognise are left in the stream for the sketch. */
-    while (Serial.available() > 0)
-        dvi.consoleKey((char)Serial.read());
+     *   dvi.setResolution(WUA_RES_1280x720x1);
+     */
 
     static uint32_t last = 0;
     if (millis() - last >= 5000) {

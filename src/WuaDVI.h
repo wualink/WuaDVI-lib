@@ -53,62 +53,45 @@ class WuaDVI {
      *
      * Safe to call again after a failure — it retries the whole sequence.
      *
+     * The mode is whatever you pass, every time. The one exception is a switch
+     * requested by setResolution(): that is honoured once, on the restart it
+     * performs, and then forgotten.
+     *
+     * @param res  Mode to start in.
      * @return true when the display is running; false with lastError() set.
      */
     bool begin(wua_resolution_id_t res = WUA_RES_640x480x1);
 
     /**
-     * @brief Change the display mode and restart into it.
+     * @brief Change the display mode, at runtime, from your code.
      *
-     * Stores the mode so it survives the restart, then reboots the ESP32.
-     * **This call does not return.**
+     * The one function that changes resolution:
      *
-     * A restart is how the mode changes rather than an implementation
+     * @code
+     *   dvi.setResolution(WUA_RES_1280x720x1);
+     * @endcode
+     *
+     * **This call does not return.** It latches the mode and reboots the
+     * ESP32, and the next begin() comes up in it.
+     *
+     * The restart is how the mode changes rather than an implementation
      * shortcut: the display engine itself reboots into a new mode (its clocks
-     * and framebuffer are fixed once its scanout starts), and this side has to
-     * resize the render buffer and rebuild the interface anyway. Restarting
-     * both together is the one sequence that is always consistent.
+     * and framebuffer are fixed once its scanout starts), this side has to
+     * resize the render buffer, and the widget primitives resolve their pixel
+     * sizes when they are created — so the interface has to be rebuilt at the
+     * new size regardless. Restarting both ends together is the one sequence
+     * that is always consistent, and it puts the rebuild in your setup(),
+     * where it already lives.
      *
-     * The stored mode is picked up by the next begin() that is called without
-     * an explicit argument, so a sketch that does `dvi.begin()` follows it.
+     * The latch is consumed by that next begin() and does not persist beyond
+     * it: a power cycle brings the board up in whatever mode your begin() asks
+     * for. To remember a choice across power cycles, store it yourself and
+     * pass it in — see the README.
      *
      * @param res  Mode to switch to.
      * @return Only on failure — false if @p res is not a valid mode.
      */
     bool setResolution(wua_resolution_id_t res);
-
-    /**
-     * @brief The mode stored by setResolution(), if any.
-     * @param out_res  Receives the stored mode.
-     * @return false when nothing has been stored (a fresh device).
-     */
-    static bool storedResolution(wua_resolution_id_t *out_res);
-
-    /** @brief Forget the stored mode, so begin() uses its argument again. */
-    static void clearStoredResolution(void);
-
-    /**
-     * @brief Handle one keypress from the serial console.
-     *
-     * Gives any sketch a way to change the display mode without a rebuild —
-     * drop this in your loop() and the board answers on the serial monitor:
-     *
-     * @code
-     *   while (Serial.available() > 0)
-     *       dvi.consoleKey((char)Serial.read());
-     * @endcode
-     *
-     * Keys: `1`..`5` switch mode (stores and restarts), `c` forgets the stored
-     * mode, `i` prints status, `?` prints this list. Anything else is ignored,
-     * so a sketch can read its own keys from the same stream.
-     *
-     * @param key  Character received.
-     * @return true if the key was one of ours.
-     */
-    bool consoleKey(char key);
-
-    /** @brief Print the console key list to Serial. */
-    static void printConsoleHelp(void);
 
     /**
      * @brief Service the board. Call from your loop(), as often as possible.
