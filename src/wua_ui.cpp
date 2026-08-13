@@ -3,6 +3,8 @@
  * @brief WuaDVI UI primitives implementation — see wua_ui.h.
  */
 #include <Arduino.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
 #include "wua_ui.h"
 #include "wuadvi_config.h"
@@ -908,4 +910,72 @@ void wua_sweep(wua_obj_t *target, wua_anim_cb_t cb,
      * This is the idiom LVGL's own examples use for exec callbacks. */
     lv_anim_set_exec_cb(&a, (lv_anim_exec_xcb_t)cb);
     lv_anim_start(&a);
+}
+
+/* ── The rest of what a sketch needs ────────────────────────────────────── */
+
+void wua_align(wua_obj_t *obj, wua_align_t how) {
+    if (obj == NULL)
+        return;
+    const lv_flex_align_t a = (how == WUA_ALIGN_CENTER) ? LV_FLEX_ALIGN_CENTER
+                                                        : LV_FLEX_ALIGN_START;
+    lv_obj_set_flex_align(obj, a, a, a);
+}
+
+void wua_label_set(wua_obj_t *label, const char *text) {
+    if (label != NULL && text != NULL)
+        lv_label_set_text(label, text);
+}
+
+void wua_label_setf(wua_obj_t *label, const char *fmt, ...) {
+    if (label == NULL || fmt == NULL)
+        return;
+
+    /* Formatted on the stack rather than through lv_label_set_text_fmt(),
+     * which is variadic and offers no va_list form to forward to. */
+    char buf[96];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    lv_label_set_text(label, buf);
+}
+
+/* The composite widgets keep their own handles, so their setters do not have
+ * the wua_anim_cb_t shape.  Each gets a sweep of its own rather than making
+ * every call site cast. */
+
+static void gauge_anim(void *var, int32_t v) {
+    wua_gauge_set((wua_gauge_t *)var, v);
+}
+
+static void meter_anim(void *var, int32_t v) {
+    wua_meter_set((wua_meter_t *)var, v);
+}
+
+/** Shared body: an endless there-and-back animation over @p var. */
+static void sweep_var(void *var, lv_anim_exec_xcb_t exec_cb, int32_t from,
+                      int32_t to, uint32_t period_ms) {
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, var);
+    lv_anim_set_values(&a, from, to);
+    lv_anim_set_duration(&a, period_ms);
+    lv_anim_set_playback_duration(&a, period_ms);
+    lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
+    lv_anim_set_exec_cb(&a, exec_cb);
+    lv_anim_start(&a);
+}
+
+void wua_gauge_sweep(wua_gauge_t *gauge, int32_t from, int32_t to,
+                     uint32_t period_ms) {
+    if (gauge != NULL)
+        sweep_var(gauge, gauge_anim, from, to, period_ms);
+}
+
+void wua_meter_sweep(wua_meter_t *meter, int32_t from, int32_t to,
+                     uint32_t period_ms) {
+    if (meter != NULL)
+        sweep_var(meter, meter_anim, from, to, period_ms);
 }

@@ -535,3 +535,73 @@ void wua_timer(uint32_t period_ms, wua_timer_cb_t cb);
  */
 void wua_sweep(wua_obj_t *target, wua_anim_cb_t cb,
                int32_t from, int32_t to, uint32_t period_ms);
+
+/* ── The rest of what a sketch needs ────────────────────────────────────── */
+
+/**
+ * @brief A colour from 8-bit components, usable in a constant initialiser.
+ *
+ * wua_color() is a function, so it cannot initialise a `static const` theme at
+ * file scope. This macro can:
+ *
+ * @code
+ *   static const wua_theme_t kTheme = { .bg = WUA_RGB(0x00, 0x00, 0x00), ... };
+ * @endcode
+ */
+#define WUA_RGB(r, g, b) LV_COLOR_MAKE(r, g, b)
+
+/** How a container arranges its content. */
+typedef enum {
+    WUA_ALIGN_START,  /**< Pack to the top-left.            */
+    WUA_ALIGN_CENTER, /**< Centre on both axes.             */
+} wua_align_t;
+
+/**
+ * @brief Set how a container arranges its children.
+ * @param obj  Container, typically from wua_tile() or wua_column().
+ * @param how  Alignment to apply.
+ */
+void wua_align(wua_obj_t *obj, wua_align_t how);
+
+/**
+ * @brief Replace a label's text.
+ * @param label  Label from wua_label() or wua_value_label().
+ * @param text   New text (copied by the label).
+ */
+void wua_label_set(wua_obj_t *label, const char *text);
+
+/**
+ * @brief Replace a label's text, printf-style.
+ *
+ * @code
+ *   wua_label_setf(temp, "%d.%d C", c10 / 10, abs(c10 % 10));
+ * @endcode
+ *
+ * @param label  Label from wua_label() or wua_value_label().
+ * @param fmt    printf format string, followed by its arguments.
+ */
+void wua_label_setf(wua_obj_t *label, const char *fmt, ...);
+
+/**
+ * @brief Sweep a gauge between two values, forever, back and forth.
+ *
+ * wua_sweep() drives the plain widgets; a gauge is a composite with its own
+ * handle, so it gets its own call rather than a cast at the call site.
+ *
+ * @param gauge      Handle from wua_gauge().
+ * @param from       Value at the start of each pass.
+ * @param to         Value at the end of each pass.
+ * @param period_ms  Duration of one pass; a round trip takes twice this.
+ */
+void wua_gauge_sweep(wua_gauge_t *gauge, int32_t from, int32_t to,
+                     uint32_t period_ms);
+
+/**
+ * @brief Sweep a meter between two values, forever, back and forth.
+ * @param meter      Handle from wua_meter().
+ * @param from       Value at the start of each pass.
+ * @param to         Value at the end of each pass.
+ * @param period_ms  Duration of one pass; a round trip takes twice this.
+ */
+void wua_meter_sweep(wua_meter_t *meter, int32_t from, int32_t to,
+                     uint32_t period_ms);
