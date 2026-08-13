@@ -57,6 +57,17 @@ lines move under a new version heading.
 
 ### Fixed
 
+- **Bring-up no longer stalls when no serial terminal is open.** A USB-CDC port
+  that is plugged in counts as *connected* even with nobody reading it, so the
+  TX buffer fills and the write blocks — the board sat on the display engine's
+  splash until a monitor was opened.
+
+  The timeout is now 10 ms, and specifically **not** zero, which is the value
+  that looks like "never wait" and is the only one that waits forever:
+  `HWCDC::write()` counts down `tries = tx_timeout_ms` while no data moves, so
+  zero underflows a `uint32_t` on the first pass and the give-up loop runs for
+  about 49 days. Every bundled sketch was carrying that zero and now carries 10.
+
 - **`LV_MEM_SIZE` raised from 96 KB to 128 KB.** LVGL's pool is a static array
   and widgets are sized in pixels, so a screen costs about four times as much
   at 1280×720 as at 640×480; a widget-rich screen exhausted it. Exhaustion is
