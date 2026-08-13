@@ -170,7 +170,7 @@ Three layers, so simple sketches stay simple and advanced ones stay possible:
 |---|---|---|
 | **L0 — Board** | `begin()`, `loop()`, `resolution()`, `temperature()`, `ready()`, `stats()` | Most sketches |
 | **L1 — Transport** | Direct access to the rect stream and control link | Diagnostics, custom pipelines |
-| **L2 — Widgets** | `wua_tile`, `wua_gauge`, `wua_meter`, `wua_clock`, `wua_label` | Building interfaces |
+| **L2 — Widgets** | `wua_tile`, `wua_button`, `wua_slider`, `wua_bar`, `wua_arc`, `wua_switch`, `wua_led`, `wua_gauge`, … | Building interfaces |
 
 L0 is meant to be enough on its own. If a sketch has to reach into L1 to do
 something ordinary, that is a gap in L0 — please open an issue.
@@ -261,6 +261,42 @@ wua_theme_set(&my_theme);   // false if the theme is not monochrome-safe
 1-bit luminance threshold — in the monochrome modes an unchecked colour choice
 becomes an invisible one, and it is better to hear about it at startup than to
 discover it on a different display mode.
+
+### Widgets
+
+Every LVGL widget has a `wua_*` counterpart that takes the parent, a size in
+percentages, and its values:
+
+```cpp
+lv_obj_t *s = wua_slider(panel, 88, 16, 0, 100, my_color);
+lv_slider_set_value(s, 42, LV_ANIM_OFF);        // ordinary LVGL from here on
+```
+
+| | |
+|---|---|
+| Containers | `wua_tile`, `wua_column`, `wua_row`, `wua_container` |
+| Text | `wua_label`, `wua_value_label`, `wua_clock` |
+| Indicators | `wua_bar`, `wua_arc`, `wua_led`, `wua_spinner`, `wua_gauge`, `wua_meter` |
+| Controls | `wua_button`, `wua_slider`, `wua_switch`, `wua_checkbox`, `wua_roller`, `wua_dropdown` |
+| Sizing | `wua_fit`, `wua_pad`, `wua_font_fit` |
+
+Each returns the plain LVGL object, so behaviour stays ordinary LVGL —
+`lv_bar_set_value()`, `lv_obj_add_state()` and the rest all work. The primitives
+own construction and appearance, not behaviour.
+
+**Use them instead of `lv_*_create()`**, for a reason that only shows up on
+hardware. LVGL styles its widgets in shades of one hue: a slider's track
+against its indicator, a switch's track against its knob. The monochrome modes
+reduce each pixel to one bit *by luminance*, so both halves of every one of
+those pairs land on the same side of the threshold and the widget becomes a
+flat rectangle — or, for an LED that is off, nothing at all. The primitives
+build the same widgets out of outlines and full-white indicators instead, which
+is geometry rather than shade, and geometry survives thresholding. They also
+resolve their pixel sizes and fonts from the panel they are placed in, so one
+layout holds from 320×240 to 1280×720.
+
+Reaching past them is allowed and sometimes right — but a widget that looks
+correct at 400×240 and vanishes at 640×480 is the usual result.
 
 ---
 

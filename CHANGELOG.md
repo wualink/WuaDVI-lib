@@ -18,13 +18,82 @@ lines move under a new version heading.
 
 ### Added
 
+- **Everything a sketch needs besides widgets**, so an application can be
+  written end to end without naming LVGL: `wua_screen()`, `wua_header()` and
+  `wua_grid()` for the layout; `wua_color()`; a setter per widget
+  (`wua_slider_set`, `wua_led_set`, `wua_roller_select`, …); `wua_timer()` for
+  state that steps and `wua_sweep()` for values that should look continuous.
+  The `wua_obj_t` and `wua_color_t` typedefs complete the vocabulary.
+
+  Creating widgets was never the whole job. With construction wrapped but
+  values, timers and layout left to LVGL, a sketch still had to know which
+  calls survive the monochrome modes — which is the knowledge the primitives
+  exist to hold. A setter has the shape `wua_sweep()` wants, so
+  `wua_sweep(slider, wua_slider_set, 0, 100, 2600)` replaces a hand-written
+  animation callback.
+
+- **A primitive for every standard widget**: `wua_button`, `wua_checkbox`,
+  `wua_switch`, `wua_led`, `wua_slider`, `wua_bar`, `wua_arc`, `wua_spinner`,
+  `wua_roller`, `wua_dropdown`, plus `wua_fit()` for parent-relative sizing.
+  Each takes the parent, sizes in percentages and its values, and returns the
+  plain LVGL object so behaviour stays ordinary LVGL.
+
+  Found on hardware, and worth recording because it is invisible everywhere
+  else: LVGL styles widget parts in shades of one hue, and the monochrome modes
+  reduce each pixel to one bit **by luminance**, so a slider's track and its
+  indicator — or a switch's track and its knob — land on the same side of the
+  threshold and the widget renders as a flat rectangle. An `lv_led` that is off
+  disappears entirely. The same sketch looked correct at 400x240 and unusable
+  at 640x480. The primitives rebuild each widget from outlines and full-white
+  indicators, which is geometry rather than shade, and geometry survives
+  thresholding. They also resolve sizes and fonts from the parent, which fixes
+  the clipping seen on the arc, roller and dropdown at 400x240.
+
 - `wua_column()` and `wua_row()` — containers that carry a layout. Found on
   hardware: `wua_container()` has none, so its children all land at the same
   position and silently overlap, and an unlaid-out container also takes room
   from a sibling meant to grow. Both primitives size themselves sensibly, so
   the common case stops being a trap.
 
+### Fixed
+
+- **`LV_MEM_SIZE` raised from 96 KB to 128 KB.** LVGL's pool is a static array
+  and widgets are sized in pixels, so a screen costs about four times as much
+  at 1280×720 as at 640×480; a widget-rich screen exhausted it. Exhaustion is
+  not reported as an error — `LV_USE_ASSERT_MALLOC` spins and the task watchdog
+  reboots, which looks like a display bring-up that restarts forever and sends
+  you hunting in the wrong subsystem.
+- **The generated `lv_conf.h` is refreshed when the library's default
+  changes.** It is written into `.pio/libdeps/`, so "never overwrite" meant a
+  library upgrade could silently fail to apply — raising `LV_MEM_SIZE` above
+  did nothing until the stale copy was deleted by hand. The hook now records a
+  hash of what it wrote: an untouched copy is refreshed, an edited one is kept
+  and reported.
+- **Widgets no longer escape their panel.** The checkbox, dropdown and roller
+  now fit their font to the width their longest text needs, not only to the
+  height; the slider's track is inset by the knob's overhang instead of running
+  past the tile edge.
+- **The arc and spinner tracks no longer threshold to white.** They used the
+  theme's `dim`, a light grey that the 1-bit reduction rounds *up*, so track
+  and indicator both came out white and the widget read as a solid ring.
+- **A pressed button shows its caption again.** The inverted text colour was
+  set on the label, and a child does not receive its parent's states, so it
+  never applied — white caption on a white face. It is set on the button now
+  and inherited.
+- **An unlit LED is visible.** `lv_led` scales every colour it draws by its
+  brightness, the outline included, so the ring meant to show an unlit lamp
+  faded out with the fill. `wua_led()` no longer uses that widget.
+
 ### Changed
+
+- **The default `lv_conf.h` now enables LVGL's whole widget set**, not only the
+  six widgets this library's own primitives are built from. Found while writing
+  the demo catalogue: `lv_slider_create()` failed to compile in a sketch that
+  had done nothing wrong, and the file to fix is generated into
+  `.pio/libdeps/` and regenerated from under the user — which makes a
+  zero-configuration install a trap rather than a convenience. Unused widgets
+  are dropped at link time, so the cost is compile time, not flash. `lottie`,
+  `gif` and `3dtexture` stay off: they need external decoders.
 
 - **`setResolution()` is now the one function that decides the resolution, and
   `begin()` takes no argument.** Called in `setup()` before `begin()` it simply
