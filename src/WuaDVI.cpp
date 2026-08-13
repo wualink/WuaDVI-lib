@@ -121,14 +121,19 @@ bool WuaDVI::setResolution(wua_resolution_id_t res) {
 }
 
 bool WuaDVI::begin(void) {
-    /* Never wait for a serial host.  Bring-up prints a few dozen lines, and on
-     * a USB-CDC port with nobody attached the TX buffer fills and the write
-     * blocks — so the board sits on the display engine's splash until someone
-     * opens a monitor, which is both baffling and useless in the field.  A
-     * zero timeout makes the library drop its own logs instead of stalling the
-     * display.  A sketch that sets this itself simply sets it twice. */
+    /* Never wait for a serial host.  Bring-up prints a few dozen lines, and a
+     * USB-CDC port that is plugged in but has no reader counts as connected —
+     * the TX buffer fills, the write blocks, and the board sits on the display
+     * engine's splash until somebody opens a monitor.  Useless in the field.
+     *
+     * The value must be small but NOT zero.  HWCDC::write() gives up after
+     * `tries = tx_timeout_ms` milliseconds without progress, decrementing
+     * `tries` each time — so zero underflows a uint32_t on the first pass and
+     * the loop waits about 49 days instead of not waiting at all.  Ten
+     * milliseconds is enough for a real terminal to keep up and short enough
+     * that an absent one costs nothing worth measuring. */
 #if defined(ARDUINO_USB_CDC_ON_BOOT) && ARDUINO_USB_CDC_ON_BOOT
-    Serial.setTxTimeoutMs(0);
+    Serial.setTxTimeoutMs(10);
 #endif
 
     /* Normally the mode is whatever setResolution() selected in setup() — or

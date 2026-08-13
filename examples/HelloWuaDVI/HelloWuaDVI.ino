@@ -19,8 +19,8 @@ WuaDVI dvi;
 
 void setup() {
     Serial.begin(115200);
-    Serial.setTxTimeoutMs(0); /* never block when no host is attached */
-    delay(1500);              /* margin to open the serial monitor */
+    Serial.setTxTimeoutMs(10); /* never wait on an absent host; 0 would hang */
+    delay(1500);               /* margin to open the serial monitor */
 
     Serial.printf("\nWuaDVI %s — display engine v%s\n",
                   dvi.resolutionName(), WuaDVI::displayEngineVersion());
