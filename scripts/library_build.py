@@ -278,31 +278,56 @@ def _provide_lvgl_config():
     An application that wants its own configuration simply provides one — its
     file is never overwritten, and setting LV_CONF_PATH or LV_CONF_INCLUDE_SIMPLE
     bypasses this lookup entirely.
+
+    A file WE wrote is refreshed when the library's default changes, which
+    "never overwrite" alone gets wrong: the generated copy lives in a build
+    directory, so a library upgrade that raises LV_MEM_SIZE or enables a widget
+    would silently do nothing and the symptom appears far from the cause.  The
+    two cases are told apart by a hash of what was last written, kept beside
+    the file — if the copy on disk still matches, nobody has edited it and it
+    is ours to replace.
     """
     libdeps = env.subst("$PROJECT_LIBDEPS_DIR")  # noqa: F821
     pioenv = env.subst("$PIOENV")                # noqa: F821
     if not libdeps or not pioenv:
         return
     target = os.path.join(libdeps, pioenv, "lv_conf.h")
-
-    if os.path.isfile(target):
-        print("[WuaDVI-lib] lv_conf.h  : provided by the project")
-        return
+    stamp = os.path.join(libdeps, pioenv, ".lv_conf.wuadvi")
 
     source = os.path.join(LIB_DIR, "config", "lv_conf_default.h")
     if not os.path.isfile(source):
         return  # nothing to offer; LVGL will report the missing config itself
 
-    os.makedirs(os.path.dirname(target), exist_ok=True)
     with open(source, "r", encoding="utf-8") as src:
         body = src.read()
+    header = ("/* Written by WuaDVI-lib because this project supplied no\n"
+              " * lv_conf.h.  Edit it and the library stops touching it; to go\n"
+              " * back to the default, delete it.  Source:\n"
+              " * WuaDVI-lib/config/lv_conf_default.h */\n")
+    content = header + body
+    digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+    if os.path.isfile(target):
+        with open(target, "r", encoding="utf-8") as cur:
+            current = cur.read()
+        if current == content:
+            print("[WuaDVI-lib] lv_conf.h  : up to date")
+            return
+        previous = ""
+        if os.path.isfile(stamp):
+            with open(stamp, "r", encoding="utf-8") as st:
+                previous = st.read().strip()
+        if previous != hashlib.sha256(current.encode("utf-8")).hexdigest():
+            print("[WuaDVI-lib] lv_conf.h  : kept (edited by the project)")
+            return
+        print("[WuaDVI-lib] lv_conf.h  : refreshed from the library default")
+
+    os.makedirs(os.path.dirname(target), exist_ok=True)
     with open(target, "w", encoding="utf-8", newline="\n") as dst:
-        dst.write("/* Written by WuaDVI-lib because this project supplied no\n"
-                  " * lv_conf.h.  To use your own, put one here or in your\n"
-                  " * project and it will not be overwritten.  Source:\n"
-                  " * WuaDVI-lib/config/lv_conf_default.h */\n")
-        dst.write(body)
-    print(f"[WuaDVI-lib] lv_conf.h  : supplied by the library -> {target}")
+        dst.write(content)
+    with open(stamp, "w", encoding="utf-8", newline="\n") as st:
+        st.write(digest)
+    print(f"[WuaDVI-lib] lv_conf.h  : {target}")
 
 
 _generate_payload()

@@ -28,7 +28,13 @@
 #define LV_USE_STDLIB_MALLOC    LV_STDLIB_BUILTIN
 #define LV_USE_STDLIB_STRING    LV_STDLIB_BUILTIN
 #define LV_USE_STDLIB_SPRINTF   LV_STDLIB_BUILTIN
-#define LV_MEM_SIZE             (96U * 1024U)
+/* LVGL's own pool, a static array — not the ESP heap, which stays free for the
+ * render buffer.  Widgets are sized in pixels, so a screen costs roughly four
+ * times as much at 1280x720 as at 640x480: 96 KB held a dashboard at 640x480
+ * and ran out building a widget gallery at 1280x720.  Running out does not
+ * return an error — LV_USE_ASSERT_MALLOC parks in a spin loop and the task
+ * watchdog reboots, which looks like a bring-up that restarts forever. */
+#define LV_MEM_SIZE             (128U * 1024U)
 #define LV_MEM_POOL_EXPAND_SIZE 0
 
 /* ── Tick + refresh ─────────────────────────────────────────────────────── */
@@ -87,6 +93,15 @@
 /* Font table used by wua_font_fit() (wua_ui.cpp): the primitives request a
  * text height as a percentage of the screen and snap down to the largest
  * enabled Montserrat, so every resolution keeps the same proportions. */
+/* The bottom of the ladder matters as much as the top.  A panel a fifth of a
+ * screen wide at 320x240 leaves about 40 px for a caption, and a fitter that
+ * cannot go below 14 px has nowhere to step down to — the text then overflows
+ * its panel or wraps onto a second line, which looks like a broken fitter
+ * rather than an exhausted one.  These modes are pixel-doubled on the way out,
+ * so 8 px reaches the monitor as 16. */
+#define LV_FONT_MONTSERRAT_8    1
+#define LV_FONT_MONTSERRAT_10   1
+#define LV_FONT_MONTSERRAT_12   1
 #define LV_FONT_MONTSERRAT_14   1
 #define LV_FONT_MONTSERRAT_18   1
 #define LV_FONT_MONTSERRAT_24   1
@@ -94,9 +109,19 @@
 #define LV_FONT_MONTSERRAT_48   1
 #define LV_FONT_DEFAULT         &lv_font_montserrat_14
 
-/* ── Widgets used by the demo UI ────────────────────────────────────────── */
-/* Everything else is disabled explicitly to keep the build minimal and to
- * avoid pulling composite-widget dependencies by accident. */
+/* ── Widgets ────────────────────────────────────────────────────────────── */
+/* The WHOLE set, not only the six this library's own primitives are built
+ * from.  This file is the configuration an application inherits when it
+ * supplies none of its own, and a library whose pitch is "declare it and it
+ * works" cannot answer lv_slider_create() with a compile error — least of all
+ * when the file to edit is generated into .pio/libdeps and regenerated from
+ * under the user.
+ *
+ * The cost is close to nothing: a widget that is never referenced is dropped
+ * at link time by --gc-sections, so this buys compile time, not flash.
+ *
+ * An application that wants a leaner build supplies its own lv_conf.h; the
+ * library never overwrites one that already exists. */
 #define LV_USE_OBJ              1
 #define LV_USE_LABEL            1
 #define LV_USE_IMAGE            1   /* Wualabs logo (JPEG-decoded at boot)   */
@@ -104,37 +129,37 @@
 #define LV_USE_SCALE            1   /* round gauge                           */
 #define LV_USE_LINE             1   /* gauge needle                          */
 
-#define LV_USE_ANIMIMG          0
-#define LV_USE_ARC              0
-#define LV_USE_BUTTON           0
-#define LV_USE_BUTTONMATRIX     0
-#define LV_USE_CALENDAR         0
-#define LV_USE_CANVAS           0
-#define LV_USE_CHART            0
-#define LV_USE_CHECKBOX         0
-#define LV_USE_DROPDOWN         0
-#define LV_USE_IMAGEBUTTON      0
-#define LV_USE_KEYBOARD         0
-#define LV_USE_LED              0
-#define LV_USE_LIST             0
+#define LV_USE_ANIMIMG          1
+#define LV_USE_ARC              1
+#define LV_USE_BUTTON           1
+#define LV_USE_BUTTONMATRIX     1
+#define LV_USE_CALENDAR         1
+#define LV_USE_CANVAS           1
+#define LV_USE_CHART            1
+#define LV_USE_CHECKBOX         1
+#define LV_USE_DROPDOWN         1
+#define LV_USE_IMAGEBUTTON      1
+#define LV_USE_KEYBOARD         1
+#define LV_USE_LED              1
+#define LV_USE_LIST             1
 #define LV_USE_LOTTIE           0
-#define LV_USE_MENU             0
-#define LV_USE_MSGBOX           0
-#define LV_USE_ROLLER           0
-#define LV_USE_SLIDER           0
-#define LV_USE_SPAN             0
-#define LV_USE_SPINBOX          0
-#define LV_USE_SPINNER          0
-#define LV_USE_SWITCH           0
-#define LV_USE_TABLE            0
-#define LV_USE_TABVIEW          0
-#define LV_USE_TEXTAREA         0
-#define LV_USE_TILEVIEW         0
-#define LV_USE_WIN              0
+#define LV_USE_MENU             1
+#define LV_USE_MSGBOX           1
+#define LV_USE_ROLLER           1
+#define LV_USE_SLIDER           1
+#define LV_USE_SPAN             1
+#define LV_USE_SPINBOX          1
+#define LV_USE_SPINNER          1
+#define LV_USE_SWITCH           1
+#define LV_USE_TABLE            1
+#define LV_USE_TABVIEW          1
+#define LV_USE_TEXTAREA         1
+#define LV_USE_TILEVIEW         1
+#define LV_USE_WIN              1
 
 /* ── Layouts / themes ───────────────────────────────────────────────────── */
 #define LV_USE_FLEX             1   /* the whole demo layout is flex-based   */
-#define LV_USE_GRID             0
+#define LV_USE_GRID             1
 #define LV_USE_THEME_DEFAULT    1
 #define LV_THEME_DEFAULT_DARK   1   /* dark UI: masks 1-bit flat-field banding */
 
