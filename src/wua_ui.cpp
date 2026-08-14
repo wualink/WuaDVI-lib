@@ -252,6 +252,26 @@ wua_gauge_t *wua_gauge(lv_obj_t *parent, int32_t diameter_pct,
     const int32_t avail_w = lv_obj_get_content_width(parent);
     const int32_t avail_h = lv_obj_get_content_height(parent);
     int32_t d = LV_MIN(avail_w, avail_h) * diameter_pct / 100;
+
+    /* The readout sits BESIDE the disc, not under it, so the diameter alone is
+     * not the gauge's width — and a diameter taken from the smaller side spends
+     * room the number still needs.  A tile wide enough absorbs that (1280x720
+     * did); a narrower one pushes the readout out of the panel.
+     *
+     * Settle the pair rather than guessing once: the readout's font is derived
+     * from the diameter, so shrinking the disc shrinks the number too and frees
+     * more width than it costs.  Two passes is normally enough. */
+    char max_text[12];
+    snprintf(max_text, sizeof(max_text), "%ld", (long)max);
+    for (int pass = 0; pass < 4; ++pass) {
+        lv_point_t probe;
+        lv_text_get_size(&probe, max_text, wua_font_fit(d * 35 / 100), 0, 0,
+                         LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+        const int32_t fits = avail_w - probe.x - 3 * s_pad;
+        if (d <= fits)
+            break;
+        d = fits;
+    }
     if (d < 24)
         d = 24;
 
@@ -287,9 +307,8 @@ wua_gauge_t *wua_gauge(lv_obj_t *parent, int32_t diameter_pct,
     lv_scale_set_line_needle_value(g->scale, g->needle, g->needle_len, min);
 
     /* Readout font scales with the gauge disc; width frozen at the widest
-     * value the range allows. */
-    char max_text[12];
-    snprintf(max_text, sizeof(max_text), "%ld", (long)max);
+     * value the range allows. max_text was measured above, where the diameter
+     * was settled against it. */
     const lv_font_t *font = wua_font_fit(d * 35 / 100);
     g->label = lv_label_create(g->wrapper);
     lv_obj_set_style_text_font(g->label, font, 0);

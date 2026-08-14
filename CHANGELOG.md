@@ -57,6 +57,15 @@ lines move under a new version heading.
 
 ### Fixed
 
+- **`wua_gauge()` no longer pushes its readout out of the panel.** The gauge is
+  a row — the disc with the number beside it — but the diameter was taken from
+  the smaller side of the parent without deducting what the readout needs
+  horizontally. A wide enough panel absorbed that and a narrow one did not, so
+  the same gauge was correct at 1280x720 and overflowing at every other
+  resolution. The two are now settled together: the readout's font is derived
+  from the diameter, so shrinking the disc shrinks the number and frees more
+  width than it costs.
+
 - **Bring-up no longer stalls when no serial terminal is open.** A USB-CDC port
   that is plugged in counts as *connected* even with nobody reading it, so the
   TX buffer fills and the write blocks — the board sat on the display engine's
