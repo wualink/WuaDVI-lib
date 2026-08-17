@@ -605,3 +605,29 @@ void wua_gauge_sweep(wua_gauge_t *gauge, int32_t from, int32_t to,
  */
 void wua_meter_sweep(wua_meter_t *meter, int32_t from, int32_t to,
                      uint32_t period_ms);
+
+/**
+ * @brief Remove everything inside an object, leaving the object itself.
+ *
+ * For a screen that is rebuilt at runtime — a layout the user can change while
+ * the board is running. Call it, then call wua_ui_init() before building
+ * again: the composite widgets (gauge, meter) hand out handles from fixed
+ * pools, and without that reset a few rebuilds exhaust them.
+ *
+ * @param obj  Container to empty, usually wua_screen().
+ */
+void wua_clear(wua_obj_t *obj);
+
+/**
+ * @brief Resolve every pending layout, so percentage sizes become real pixels.
+ *
+ * The primitives that size themselves against their parent — wua_gauge(),
+ * wua_value_label(), wua_fit() and the widgets — measure it as they are
+ * created. That is correct only if the parent already has its final size, and
+ * a parent sized in percent does not until its siblings exist.
+ *
+ * Build a screen in two passes when its shape is not known in advance: create
+ * the containers, call this, then fill them. A one-pass build silently
+ * measures against whatever the layout looked like halfway through.
+ */
+void wua_settle(void);

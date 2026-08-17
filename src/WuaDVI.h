@@ -153,4 +153,9 @@ class WuaDVI {
     bool m_running = false;
     bool m_lvgl_started = false;
     const char *m_error = "";
+
+    /* Telemetry rides on the pixel packets, so silence only means the display
+     * engine died if we were actually sending. These track that. */
+    uint32_t m_last_rects = 0;
+    uint32_t m_last_sent_ms = 0;
 };

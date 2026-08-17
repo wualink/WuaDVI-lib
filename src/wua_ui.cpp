@@ -277,10 +277,16 @@ wua_gauge_t *wua_gauge(lv_obj_t *parent, int32_t diameter_pct,
 
     g->wrapper = wua_container(parent);
     lv_obj_set_size(g->wrapper, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-    lv_obj_set_flex_flow(g->wrapper, LV_FLEX_FLOW_ROW);
+    /* Side by side while there is room, stacked when there is not.  A gauge in
+     * a narrow tile that insists on a row squeezes its own readout to nothing;
+     * a column costs height, which a narrow tile usually has to spare. */
+    const bool stack = (d + 4 * s_pad) > avail_w;
+    lv_obj_set_flex_flow(g->wrapper,
+                         stack ? LV_FLEX_FLOW_COLUMN : LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(g->wrapper, LV_FLEX_ALIGN_CENTER,
                           LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_column(g->wrapper, s_pad * 2, 0);
+    lv_obj_set_style_pad_row(g->wrapper, s_pad, 0);
 
     g->scale = lv_scale_create(g->wrapper);
     lv_obj_set_size(g->scale, d, d);
@@ -312,6 +318,12 @@ wua_gauge_t *wua_gauge(lv_obj_t *parent, int32_t diameter_pct,
     const lv_font_t *font = wua_font_fit(d * 35 / 100);
     g->label = lv_label_create(g->wrapper);
     lv_obj_set_style_text_font(g->label, font, 0);
+    /* Never wrap.  The label carries a frozen width, but a flex row is free to
+     * shrink it when the tile is small, and the default long mode then breaks
+     * "100" across two lines — which reads as a broken widget rather than a
+     * cramped one.  Clipping is honest; wrapping is not. */
+    lv_label_set_long_mode(g->label, LV_LABEL_LONG_MODE_CLIP);
+    lv_obj_set_style_flex_grow(g->label, 0, 0);
     lv_obj_set_style_text_color(g->label, wua_theme()->text, 0);
     lv_obj_set_style_text_align(g->label, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_text(g->label, max_text);
@@ -997,4 +1009,13 @@ void wua_meter_sweep(wua_meter_t *meter, int32_t from, int32_t to,
                      uint32_t period_ms) {
     if (meter != NULL)
         sweep_var(meter, meter_anim, from, to, period_ms);
+}
+
+void wua_clear(wua_obj_t *obj) {
+    if (obj != NULL)
+        lv_obj_clean(obj);
+}
+
+void wua_settle(void) {
+    lv_obj_update_layout(lv_screen_active());
 }
