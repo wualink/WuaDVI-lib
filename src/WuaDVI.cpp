@@ -56,6 +56,11 @@ bool WuaDVI::startPipeline(void) {
      * on first start and on every recovery. */
     lv_obj_invalidate(lv_screen_active());
 
+    /* Start the activity clock here: a bring-up always repaints, so this is
+     * the one moment we know packets are about to flow. */
+    m_last_rects = lvgl_port_rects_sent();
+    m_last_sent_ms = millis();
+
     m_error = "";
     return true;
 }
@@ -170,7 +175,48 @@ void WuaDVI::loop(void) {
 
     delay(lvgl_port_loop());
 
-    if (display_link_telemetry_age() > WUADVI_RP_DEAD_MS) {
+    /* The display engine reports its health on the back of the pixel packets,
+     * so telemetry only flows while there is something to draw.  A screen that
+     * has settled — a status board with no clock on it, which is an ordinary
+     * thing to build — sends nothing, hears nothing back, and used to be
+     * declared dead every six seconds: the pipeline was rebuilt, the rebuild
+     * forced a repaint, telemetry returned, and six seconds later it happened
+     * again.  A healthy board looked like one stuck in a boot loop.
+     *
+     * Silence is therefore only evidence of death when we were speaking. If
+     * nothing has been sent, nothing can have come back, and the right answer
+     * is to wait rather than to reset the display engine under a working
+     * screen. A genuinely dead engine behind a static screen goes unnoticed
+     * until the next redraw, which is when it starts to matter. */
+    const uint32_t sent = lvgl_port_rects_sent();
+    if (sent != m_last_rects) {
+        m_last_rects = sent;
+        m_last_sent_ms = millis();
+    }
+
+    /* The question is not "how old is the telemetry" but "how long have we been
+     * sending without hearing back".  Telemetry is always at least as old as
+     * the last packet, so comparing both against the same window makes them
+     * cross it together — a static screen then trips the check with about a
+     * hundred milliseconds to spare, which is what a healthy board caught in a
+     * six-second rebuild cycle looked like.
+     *
+     * The gap between the two is the real signal: small means the last packet
+     * was answered, large means packets are going out and nothing is coming
+     * back. */
+    const uint32_t tele_age = display_link_telemetry_age();
+    const uint32_t send_age = millis() - m_last_sent_ms;
+    const uint32_t unanswered = (tele_age > send_age) ? (tele_age - send_age) : 0;
+
+    if (unanswered > WUADVI_RP_DEAD_MS) {
+        /* Say WHY before acting.  A recovery that prints only its bring-up
+         * looks identical to a boot loop, and the two have opposite causes:
+         * one is the display engine dying, the other is this side deciding it
+         * did.  These three numbers separate them. */
+        Serial.printf("[RP] recovering: telemetry %lu ms old, %lu rects sent, "
+                      "last send %lu ms ago\n",
+                      (unsigned long)tele_age, (unsigned long)sent,
+                      (unsigned long)send_age);
         /* The display engine reset under us. Re-run the bring-up to reset it
          * and re-arm the stream; the interface is preserved and repainted. */
         m_running = startPipeline();
