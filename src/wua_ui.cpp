@@ -68,10 +68,11 @@ static int32_t s_pad = 4;
 /* Handles live in static pools — embedded-friendly, no heap fragmentation. */
 #define WUA_UI_MAX_GAUGES 4
 #define WUA_UI_MAX_METERS 4
+/* A slot is free exactly when its wrapper is NULL.  No running count: a
+ * counter only describes a pool that is filled and emptied in order, and this
+ * one is not once a screen can be rebuilt piecemeal. */
 static wua_gauge_t s_gauges[WUA_UI_MAX_GAUGES];
-static uint8_t s_gauge_count = 0;
 static wua_meter_t s_meters[WUA_UI_MAX_METERS];
-static uint8_t s_meter_count = 0;
 
 /** Enabled Montserrat table used by wua_font_fit(), ascending sizes. */
 static const struct {
@@ -89,6 +90,69 @@ static const struct {
 };
 #define WUA_FONT_COUNT (sizeof(s_fonts) / sizeof(s_fonts[0]))
 
+/**
+ * @brief Free pool slots whose widgets no longer exist, and stop their
+ *        animations.
+ *
+ * Two problems this solves, both invisible until a screen is rebuilt.
+ *
+ * The animations wua_gauge_sweep() and wua_meter_sweep() start carry the
+ * COMPOSITE HANDLE as their `var`, not an LVGL object -- the handle is what
+ * their setter needs.  lv_obj_clean() only cancels animations whose var is one
+ * of the objects it deletes, so those keep running over freed children until
+ * something dereferences them.
+ *
+ * And the pools used to be emptied wholesale by wua_ui_init().  That is wrong
+ * for any clear that is not the whole screen: a gauge living outside the
+ * cleared subtree survives, its slot is handed out again, and the application's
+ * handle then drives a different widget.
+ *
+ * Liveness is asked of LVGL instead of assumed, and slots are freed IN PLACE.
+ * Compacting would be tidier and just as wrong: a handle is a pointer into
+ * this array, so moving a survivor to fill a gap leaves the application
+ * pointing at whatever lands on its old address.
+ */
+static void release_dead_composites(void) {
+    for (uint8_t i = 0; i < WUA_UI_MAX_GAUGES; ++i) {
+        if (s_gauges[i].wrapper == NULL)
+            continue; /* already free */
+        if (lv_obj_is_valid(s_gauges[i].wrapper))
+            continue; /* still on screen */
+        /* Before the slot can be reused: nothing may still be ticking through
+         * this handle. */
+        lv_anim_delete(&s_gauges[i], NULL);
+        memset(&s_gauges[i], 0, sizeof(s_gauges[i]));
+    }
+    for (uint8_t i = 0; i < WUA_UI_MAX_METERS; ++i) {
+        if (s_meters[i].wrapper == NULL)
+            continue;
+        if (lv_obj_is_valid(s_meters[i].wrapper))
+            continue;
+        lv_anim_delete(&s_meters[i], NULL);
+        memset(&s_meters[i], 0, sizeof(s_meters[i]));
+    }
+}
+
+/** @return A free gauge slot, or NULL when every one is taken. */
+static wua_gauge_t *alloc_gauge(void) {
+    release_dead_composites();
+    for (uint8_t i = 0; i < WUA_UI_MAX_GAUGES; ++i) {
+        if (s_gauges[i].wrapper == NULL)
+            return &s_gauges[i];
+    }
+    return NULL;
+}
+
+/** @return A free meter slot, or NULL when every one is taken. */
+static wua_meter_t *alloc_meter(void) {
+    release_dead_composites();
+    for (uint8_t i = 0; i < WUA_UI_MAX_METERS; ++i) {
+        if (s_meters[i].wrapper == NULL)
+            return &s_meters[i];
+    }
+    return NULL;
+}
+
 void wua_ui_init(void) {
     /* One padding unit that grows with the screen: 4 px at 240 lines,
      * 8 px at 480, 10 px at 600. */
@@ -96,8 +160,11 @@ void wua_ui_init(void) {
     if (s_pad < 3)
         s_pad = 3;
 
-    s_gauge_count = 0;
-    s_meter_count = 0;
+    /* The pools are NOT emptied here.  They used to be, and callers were told
+     * to call this after wua_clear() -- which quietly invalidated handles the
+     * caller still owned whenever the clear was partial.  Slots are released
+     * from what LVGL says is alive instead. */
+    release_dead_composites();
 }
 
 int32_t wua_pad(void) {
@@ -238,11 +305,11 @@ lv_obj_t *wua_tile(lv_obj_t *parent, const char *title,
 /* ── Gauge ───────────────────────────────────────────────────────────────── */
 wua_gauge_t *wua_gauge(lv_obj_t *parent, int32_t diameter_pct,
                        int32_t min, int32_t max) {
-    if (s_gauge_count >= WUA_UI_MAX_GAUGES) {
+    wua_gauge_t *g = alloc_gauge();
+    if (g == NULL) {
         LV_LOG_WARN("wua_gauge: handle pool exhausted");
         return NULL;
     }
-    wua_gauge_t *g = &s_gauges[s_gauge_count++];
     memset(g, 0, sizeof(*g));
     g->last_value = INT32_MIN;
 
@@ -279,8 +346,18 @@ wua_gauge_t *wua_gauge(lv_obj_t *parent, int32_t diameter_pct,
     lv_obj_set_size(g->wrapper, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     /* Side by side while there is room, stacked when there is not.  A gauge in
      * a narrow tile that insists on a row squeezes its own readout to nothing;
-     * a column costs height, which a narrow tile usually has to spare. */
-    const bool stack = (d + 4 * s_pad) > avail_w;
+     * a column costs height, which a narrow tile usually has to spare.
+     *
+     * The whole row is weighed, not just the dial: it is dial + column gap +
+     * readout, and the readout is exactly what gets squeezed out when the test
+     * ignores it.  This also catches the case the fitting loop cannot -- when
+     * it drives the diameter under the 24 px floor, the clamp above restores a
+     * size that no longer fits, and only a measurement taken AFTER the clamp
+     * notices. */
+    lv_point_t row;
+    lv_text_get_size(&row, max_text, wua_font_fit(d * 35 / 100), 0, 0,
+                     LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    const bool stack = (d + 2 * s_pad + row.x) > avail_w;
     lv_obj_set_flex_flow(g->wrapper,
                          stack ? LV_FLEX_FLOW_COLUMN : LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(g->wrapper, LV_FLEX_ALIGN_CENTER,
@@ -347,11 +424,11 @@ void wua_gauge_set(wua_gauge_t *gauge, int32_t value) {
 /* ── Meter ───────────────────────────────────────────────────────────────── */
 wua_meter_t *wua_meter(lv_obj_t *parent, int32_t width_pct,
                        int32_t min, int32_t max) {
-    if (s_meter_count >= WUA_UI_MAX_METERS) {
+    wua_meter_t *m = alloc_meter();
+    if (m == NULL) {
         LV_LOG_WARN("wua_meter: handle pool exhausted");
         return NULL;
     }
-    wua_meter_t *m = &s_meters[s_meter_count++];
     memset(m, 0, sizeof(*m));
     m->last_value = INT32_MIN;
 
@@ -1012,8 +1089,13 @@ void wua_meter_sweep(wua_meter_t *meter, int32_t from, int32_t to,
 }
 
 void wua_clear(wua_obj_t *obj) {
-    if (obj != NULL)
-        lv_obj_clean(obj);
+    if (obj == NULL)
+        return;
+    lv_obj_clean(obj);
+    /* Immediately, in the same call: between the delete and this line no LVGL
+     * timer runs, so no animation can tick through a handle whose widgets have
+     * just been freed. */
+    release_dead_composites();
 }
 
 void wua_settle(void) {
