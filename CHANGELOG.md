@@ -92,8 +92,11 @@ lines move under a new version heading.
   technically fitting — a 13 % panel produced a 24 px dial. Before that, the
   diameter did not deduct the readout at all, so the number was simply pushed
   out of the panel; correct at 1280x720 and wrong everywhere else. The readout
-  is now always below, the dial keeps the panel's full width, and the diameter
-  is limited by the height the number leaves.
+  is now always below, and `diameter_pct` applies to the HEIGHT with the width
+  as a plain cap — taking the percentage of the smaller side made sense while
+  the two shared a row, and afterwards only wasted panel. The readout is pulled
+  up into the arc's bottom opening, which the 270 degree scale leaves empty, so
+  the number reads as part of the gauge rather than adrift below it.
 
   Separately, the diameter was measured while the parent was still being
   built. A parent sized in percent has no real size until its siblings exist,

@@ -318,7 +318,13 @@ wua_gauge_t *wua_gauge(lv_obj_t *parent, int32_t diameter_pct,
     lv_obj_update_layout(lv_screen_active());
     const int32_t avail_w = lv_obj_get_content_width(parent);
     const int32_t avail_h = lv_obj_get_content_height(parent);
-    int32_t d = LV_MIN(avail_w, avail_h) * diameter_pct / 100;
+    /* @p diameter_pct applies to the HEIGHT, and the width is a hard cap.
+     * Taking the percentage of the smaller side made sense while the readout
+     * sat beside the dial and both needed room to breathe horizontally; with
+     * the number below, width is uncontested and holding back 15 % of it just
+     * wasted the panel.  Height is where the readout is paid for, so that is
+     * where the margin belongs. */
+    int32_t d = LV_MIN(avail_w, avail_h * diameter_pct / 100);
 
     /* The readout sits UNDER the dial, always.  Side by side, the two compete
      * for the same width: the dial shrinks to make room for the number, the
@@ -352,7 +358,12 @@ wua_gauge_t *wua_gauge(lv_obj_t *parent, int32_t diameter_pct,
     lv_obj_set_flex_flow(g->wrapper, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(g->wrapper, LV_FLEX_ALIGN_CENTER,
                           LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_row(g->wrapper, s_pad, 0);
+    /* No gap of its own: the dial already brings one.  The scale draws a 270
+     * degree arc opening at the bottom, so the lower wedge of its square box is
+     * empty, and a readout placed below that box looks adrift rather than
+     * attached.  The label is pulled up into the wedge instead -- as a margin,
+     * which flex accounts for, so the composite's height stays honest. */
+    lv_obj_set_style_pad_row(g->wrapper, 0, 0);
 
     g->scale = lv_scale_create(g->wrapper);
     lv_obj_set_size(g->scale, d, d);
@@ -392,6 +403,10 @@ wua_gauge_t *wua_gauge(lv_obj_t *parent, int32_t diameter_pct,
     lv_obj_set_style_flex_grow(g->label, 0, 0);
     lv_obj_set_style_text_color(g->label, wua_theme()->text, 0);
     lv_obj_set_style_text_align(g->label, LV_TEXT_ALIGN_CENTER, 0);
+    /* Into the arc's opening.  The wedge is (1 - cos 45) / 2 of the diameter
+     * deep, about d/7 -- which is as far up as the number can go before it
+     * reaches where the needle swings at the ends of the range. */
+    lv_obj_set_style_margin_top(g->label, -(d / 7), 0);
     lv_label_set_text(g->label, max_text);
     lv_point_t size;
     lv_text_get_size(&size, max_text, font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
