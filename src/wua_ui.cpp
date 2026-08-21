@@ -320,49 +320,38 @@ wua_gauge_t *wua_gauge(lv_obj_t *parent, int32_t diameter_pct,
     const int32_t avail_h = lv_obj_get_content_height(parent);
     int32_t d = LV_MIN(avail_w, avail_h) * diameter_pct / 100;
 
-    /* The readout sits BESIDE the disc, not under it, so the diameter alone is
-     * not the gauge's width — and a diameter taken from the smaller side spends
-     * room the number still needs.  A tile wide enough absorbs that (1280x720
-     * did); a narrower one pushes the readout out of the panel.
+    /* The readout sits UNDER the dial, always.  Side by side, the two compete
+     * for the same width: the dial shrinks to make room for the number, the
+     * number shrinks because its font follows the dial, and in a narrow panel
+     * both end up too small to read while technically fitting.  A column costs
+     * height, which a panel usually has to spare, and lets the dial keep the
+     * full width.
      *
-     * Settle the pair rather than guessing once: the readout's font is derived
-     * from the diameter, so shrinking the disc shrinks the number too and frees
-     * more width than it costs.  Two passes is normally enough. */
+     * So the diameter is limited by the HEIGHT the readout leaves, not by the
+     * width it used to steal.  The font still follows the diameter, so the two
+     * are settled together -- a smaller dial writes a smaller number, which
+     * gives the dial back some of the height it just lost. */
     char max_text[12];
     snprintf(max_text, sizeof(max_text), "%ld", (long)max);
     for (int pass = 0; pass < 4; ++pass) {
-        lv_point_t probe;
-        lv_text_get_size(&probe, max_text, wua_font_fit(d * 35 / 100), 0, 0,
-                         LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-        const int32_t fits = avail_w - probe.x - 3 * s_pad;
-        if (d <= fits)
+        const int32_t text_h =
+            lv_font_get_line_height(wua_font_fit(d * 35 / 100)) + s_pad;
+        const int32_t fits = avail_h - text_h;
+        if (d <= fits && d <= avail_w)
             break;
-        d = fits;
+        const int32_t next = LV_MIN(avail_w, fits);
+        if (next >= d)
+            break; /* no longer shrinking: take what we have */
+        d = next;
     }
     if (d < 24)
         d = 24;
 
     g->wrapper = wua_container(parent);
     lv_obj_set_size(g->wrapper, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-    /* Side by side while there is room, stacked when there is not.  A gauge in
-     * a narrow tile that insists on a row squeezes its own readout to nothing;
-     * a column costs height, which a narrow tile usually has to spare.
-     *
-     * The whole row is weighed, not just the dial: it is dial + column gap +
-     * readout, and the readout is exactly what gets squeezed out when the test
-     * ignores it.  This also catches the case the fitting loop cannot -- when
-     * it drives the diameter under the 24 px floor, the clamp above restores a
-     * size that no longer fits, and only a measurement taken AFTER the clamp
-     * notices. */
-    lv_point_t row;
-    lv_text_get_size(&row, max_text, wua_font_fit(d * 35 / 100), 0, 0,
-                     LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-    const bool stack = (d + 2 * s_pad + row.x) > avail_w;
-    lv_obj_set_flex_flow(g->wrapper,
-                         stack ? LV_FLEX_FLOW_COLUMN : LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_flow(g->wrapper, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(g->wrapper, LV_FLEX_ALIGN_CENTER,
                           LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(g->wrapper, s_pad * 2, 0);
     lv_obj_set_style_pad_row(g->wrapper, s_pad, 0);
 
     g->scale = lv_scale_create(g->wrapper);

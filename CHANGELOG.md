@@ -83,19 +83,22 @@ lines move under a new version heading.
   Slots are freed individually and **in place** — compacting the pool would
   move a survivor's address, which is the same defect wearing a tidier shape.
 
-- **The gauge's stacking decision weighs the whole row.** It compared the dial
-  and padding against the available width, ignoring the readout beside them —
-  the very thing that gets pushed out. It is also measured after the 24 px
-  minimum-diameter clamp, which can undo a fit the loop had just achieved.
+- **The gauge's readout sits under the dial, and the dial is sized against a
+  settled layout.** Two failures with one shape, both found on hardware.
 
-- **`wua_gauge()` no longer pushes its readout out of the panel.** The gauge is
-  a row — the disc with the number beside it — but the diameter was taken from
-  the smaller side of the parent without deducting what the readout needs
-  horizontally. A wide enough panel absorbed that and a narrow one did not, so
-  the same gauge was correct at 1280x720 and overflowing at every other
-  resolution. The two are now settled together: the readout's font is derived
-  from the diameter, so shrinking the disc shrinks the number and frees more
-  width than it costs.
+  Side by side, dial and readout competed for the same width: the dial shrank
+  to make room for the number, the number shrank because its font follows the
+  dial, and in a narrow panel both ended up too small to read while
+  technically fitting — a 13 % panel produced a 24 px dial. Before that, the
+  diameter did not deduct the readout at all, so the number was simply pushed
+  out of the panel; correct at 1280x720 and wrong everywhere else. The readout
+  is now always below, the dial keeps the panel's full width, and the diameter
+  is limited by the height the number leaves.
+
+  Separately, the diameter was measured while the parent was still being
+  built. A parent sized in percent has no real size until its siblings exist,
+  so a one-pass build produced a wrong diameter, a font derived from it, and a
+  needle length derived from it again. `wua_settle()` is the supported way out.
 
 - **A settled screen is no longer mistaken for a dead display engine.**
   Telemetry rides on the pixel packets, so a screen with nothing animating on

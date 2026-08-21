@@ -201,10 +201,10 @@ lv_obj_t *wua_tile(lv_obj_t *parent, const char *title,
 /**
  * @brief Round gauge: scale + needle + fixed-width numeric readout.
  *
- * The diameter is a percentage of the SMALLER side of @p parent's content
- * area (resolved after a forced layout pass), so the same call fills its
- * tile evenly at every resolution.  Ticks, needle and readout font all
- * scale with the resulting diameter.
+ * The readout sits under the dial, so the dial gets the panel's full width and
+ * the diameter is limited by the height the number leaves.  Ticks, needle and
+ * readout font all scale with the resulting diameter, resolved after a forced
+ * layout pass — so the same call fills its tile at every resolution.
  *
  * @param parent        Parent container (e.g. a wua_tile() content).
  * @param diameter_pct  Diameter as % of min(parent content w, h), e.g. 85.
