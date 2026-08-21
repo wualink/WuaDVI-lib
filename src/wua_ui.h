@@ -98,7 +98,9 @@ typedef struct {
 /**
  * @brief Initialize the primitives (padding unit, handle pools).
  *
- * Call once after lvgl_port_init() and before creating any primitive.
+ * Call once after lvgl_port_init() and before creating any primitive. Calling
+ * it again is harmless — it re-derives the padding unit for the active
+ * resolution and never invalidates a handle whose widget is still on screen.
  */
 void wua_ui_init(void);
 
@@ -199,10 +201,10 @@ lv_obj_t *wua_tile(lv_obj_t *parent, const char *title,
 /**
  * @brief Round gauge: scale + needle + fixed-width numeric readout.
  *
- * The diameter is a percentage of the SMALLER side of @p parent's content
- * area (resolved after a forced layout pass), so the same call fills its
- * tile evenly at every resolution.  Ticks, needle and readout font all
- * scale with the resulting diameter.
+ * The readout sits under the dial, so the dial gets the panel's full width and
+ * the diameter is limited by the height the number leaves.  Ticks, needle and
+ * readout font all scale with the resulting diameter, resolved after a forced
+ * layout pass — so the same call fills its tile at every resolution.
  *
  * @param parent        Parent container (e.g. a wua_tile() content).
  * @param diameter_pct  Diameter as % of min(parent content w, h), e.g. 85.
@@ -610,9 +612,15 @@ void wua_meter_sweep(wua_meter_t *meter, int32_t from, int32_t to,
  * @brief Remove everything inside an object, leaving the object itself.
  *
  * For a screen that is rebuilt at runtime — a layout the user can change while
- * the board is running. Call it, then call wua_ui_init() before building
- * again: the composite widgets (gauge, meter) hand out handles from fixed
- * pools, and without that reset a few rebuilds exhaust them.
+ * the board is running.
+ *
+ * Safe on a subtree as well as a whole screen. The composite widgets (gauge,
+ * meter) hand out handles from fixed pools, and this releases exactly the
+ * slots whose widgets it deleted — cancelling their sweeps in the same breath,
+ * because those animations are keyed on the handle rather than on an LVGL
+ * object and would otherwise keep running over freed children.
+ *
+ * Handles for widgets OUTSIDE @p obj keep working and keep their addresses.
  *
  * @param obj  Container to empty, usually wua_screen().
  */
