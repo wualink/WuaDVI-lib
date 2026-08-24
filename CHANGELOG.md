@@ -18,6 +18,18 @@ lines move under a new version heading.
 
 ### Added
 
+- **`wua_clear()` and `wua_settle()`** — the two calls a screen rebuilt at
+  runtime needs. `wua_clear()` empties a container and releases the composite
+  handles whose widgets went with it; `wua_settle()` resolves pending layouts
+  between build passes.
+
+  `wua_settle()` exists because of a failure that only appears once a screen
+  can change shape: `wua_gauge()` measures its parent as it is created, and a
+  parent sized in percent has no real size until its siblings exist. A
+  one-pass build therefore produced a wrong diameter, a font derived from that
+  diameter, and a needle length derived from it again — so a gauge was correct
+  in the layout it was written for and wrong in every other.
+
 - **Everything a sketch needs besides widgets**, so an application can be
   written end to end without naming LVGL: `wua_screen()`, `wua_header()` and
   `wua_grid()` for the layout; `wua_color()`; a setter per widget
@@ -57,14 +69,49 @@ lines move under a new version heading.
 
 ### Fixed
 
-- **`wua_gauge()` no longer pushes its readout out of the panel.** The gauge is
-  a row — the disc with the number beside it — but the diameter was taken from
-  the smaller side of the parent without deducting what the readout needs
-  horizontally. A wide enough panel absorbed that and a narrow one did not, so
-  the same gauge was correct at 1280x720 and overflowing at every other
-  resolution. The two are now settled together: the readout's font is derived
-  from the diameter, so shrinking the disc shrinks the number and frees more
-  width than it costs.
+- **Composite sweeps no longer outlive their widgets.** The animations
+  `wua_gauge_sweep()` and `wua_meter_sweep()` start carry the composite handle
+  as their variable, not an LVGL object, so `lv_obj_clean()` did not cancel
+  them: after a rebuild a tick could still dereference deleted children, or a
+  freshly zeroed slot. Slots are now released from what LVGL reports as alive,
+  and the animation is cancelled as the slot is freed.
+
+- **A partial clear no longer invalidates unrelated handles.** The pools were
+  emptied wholesale by `wua_ui_init()`, which callers were told to run after
+  `wua_clear()`. Clearing a subtree then handed a surviving widget's slot to
+  the next one created, and the application's handle drove the wrong widget.
+  Slots are freed individually and **in place** — compacting the pool would
+  move a survivor's address, which is the same defect wearing a tidier shape.
+
+- **The gauge's readout sits under the dial, and the dial is sized against a
+  settled layout.** Two failures with one shape, both found on hardware.
+
+  Side by side, dial and readout competed for the same width: the dial shrank
+  to make room for the number, the number shrank because its font follows the
+  dial, and in a narrow panel both ended up too small to read while
+  technically fitting — a 13 % panel produced a 24 px dial. Before that, the
+  diameter did not deduct the readout at all, so the number was simply pushed
+  out of the panel; correct at 1280x720 and wrong everywhere else. The readout
+  is now always below, and `diameter_pct` applies to the HEIGHT with the width
+  as a plain cap — taking the percentage of the smaller side made sense while
+  the two shared a row, and afterwards only wasted panel. The readout is pulled
+  up into the arc's bottom opening, which the 270 degree scale leaves empty, so
+  the number reads as part of the gauge rather than adrift below it.
+
+  Separately, the diameter was measured while the parent was still being
+  built. A parent sized in percent has no real size until its siblings exist,
+  so a one-pass build produced a wrong diameter, a font derived from it, and a
+  needle length derived from it again. `wua_settle()` is the supported way out.
+
+- **A settled screen is no longer mistaken for a dead display engine.**
+  Telemetry rides on the pixel packets, so a screen with nothing animating on
+  it sends nothing and hears nothing back. Both ages were compared against the
+  same six-second window, and since telemetry is always at least as old as the
+  last packet they crossed it together: a healthy board rebuilt its pipeline
+  every six seconds and read as a boot loop. The signal is the **gap** between
+  them — how long packets have been going out unanswered. A recovery now also
+  logs the numbers that separate the engine dying from this side deciding it
+  did.
 
 - **Bring-up no longer stalls when no serial terminal is open.** A USB-CDC port
   that is plugged in counts as *connected* even with nobody reading it, so the
