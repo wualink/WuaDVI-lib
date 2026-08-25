@@ -56,6 +56,9 @@ jobs:
       - name: Build HelloWuaDVI
         env:
           PLATFORMIO_CI_SRC: examples/HelloWuaDVI/HelloWuaDVI.ino
+          # Lifts GitHub's anonymous rate limit for the build hook's
+          # release download; CI runners share IPs and hit it.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           pio ci \
             --lib="." \
