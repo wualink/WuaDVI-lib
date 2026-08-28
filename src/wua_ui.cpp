@@ -225,6 +225,53 @@ lv_obj_t *wua_label(lv_obj_t *parent, const char *text,
     return l;
 }
 
+/**
+ * @brief The digit that renders widest in @p font.
+ *
+ * Montserrat's digits are proportional, not tabular, so "440" is wider than
+ * "999" and a label sized from the latter cannot hold the former.
+ */
+static char widest_digit(const lv_font_t *font) {
+    char widest = '0';
+    int32_t best = -1;
+    for (char c = '0'; c <= '9'; ++c) {
+        const char one[2] = {c, '\0'};
+        lv_point_t p;
+        lv_text_get_size(&p, one, font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+        if (p.x > best) {
+            best = p.x;
+            widest = c;
+        }
+    }
+    return widest;
+}
+
+/**
+ * @brief Measure @p text with every digit counted as the widest digit.
+ *
+ * A caller writing "999" means "three digits", not those three glyphs. Taking
+ * it literally reserved too little for "440", and the extra pixels pushed the
+ * final `0` onto a second line -- which moved everything around it.
+ */
+static void measure_reserved(lv_point_t *out, const char *text,
+                             const lv_font_t *font) {
+    char buf[48];
+    const size_t n = strlen(text);
+    if (n + 1 > sizeof(buf)) {
+        /* Too long to normalise; measure as given.  The clip mode set below
+         * keeps this a lost glyph rather than a broken layout. */
+        lv_text_get_size(out, text, font, 0, 0, LV_COORD_MAX,
+                         LV_TEXT_FLAG_NONE);
+        return;
+    }
+    const char wide = widest_digit(font);
+    size_t i = 0;
+    for (; i < n; ++i)
+        buf[i] = (text[i] >= '0' && text[i] <= '9') ? wide : text[i];
+    buf[i] = '\0';
+    lv_text_get_size(out, buf, font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+}
+
 lv_obj_t *wua_value_label(lv_obj_t *parent, const char *max_text,
                           int32_t height_pct) {
     const lv_font_t *font = font_for_pct(height_pct);
@@ -235,7 +282,7 @@ lv_obj_t *wua_value_label(lv_obj_t *parent, const char *max_text,
     lv_obj_update_layout(lv_screen_active());
     const int32_t avail = lv_obj_get_content_width(parent);
     lv_point_t size;
-    lv_text_get_size(&size, max_text, font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    measure_reserved(&size, max_text, font);
     while (avail > 0 && size.x + 2 > avail && font != s_fonts[0].font) {
         size_t i = WUA_FONT_COUNT;
         while (i-- > 1) {
@@ -244,10 +291,17 @@ lv_obj_t *wua_value_label(lv_obj_t *parent, const char *max_text,
                 break;
             }
         }
-        lv_text_get_size(&size, max_text, font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+        measure_reserved(&size, max_text, font);
     }
 
     lv_obj_t *l = lv_label_create(parent);
+    /* Never wrap.  The default long mode expands the object's height and
+     * reflows the layout, so content a hair wider than the reserved width
+     * dropped its last character onto a second line and shoved every sibling
+     * down -- the loudest possible failure for the quietest possible cause.
+     * Clipping keeps the damage inside this label, where it is visible and
+     * local. */
+    lv_label_set_long_mode(l, LV_LABEL_LONG_MODE_CLIP);
     lv_obj_set_style_text_font(l, font, 0);
     lv_obj_set_style_text_color(l, wua_theme()->text, 0);
     lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);

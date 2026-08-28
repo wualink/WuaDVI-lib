@@ -168,13 +168,24 @@ lv_obj_t *wua_label(lv_obj_t *parent, const char *text,
  * value changes never resize it and never reflow the surrounding layout —
  * this is what keeps gauges and clocks from "dancing" on screen.  The font
  * is picked from @p height_pct and stepped down automatically if the widest
- * content would not fit the parent's content width (a value label never
- * clips, whatever container it lands in).
+ * content would not fit the parent's content width.
+ *
+ * **Digits are reserved at the widest digit's width.**  Montserrat is
+ * proportional, so "440" is wider than "999"; a sample of "999" therefore
+ * means "three digits" here and fits any three-digit number.  Without that,
+ * a wider number overflowed the frozen width and wrapped onto a second line,
+ * which is the one thing this function exists to prevent.
+ *
+ * Content that still exceeds the reserved width is **clipped, never wrapped**.
+ * A clipped glyph is visible and stays inside the label; a wrapped one moves
+ * every sibling on the screen.
  *
  * @param parent      Parent object (its layout is resolved to measure the
  *                    available width — create it after sizing the parent).
  * @param max_text    Widest text the label will ever show (e.g. "100 %",
- *                    "00:00:00").  Also the initial text.
+ *                    "00:00:00").  Also the initial text.  Any digit stands
+ *                    for the widest digit, so pick the right LENGTH rather
+ *                    than the right glyphs.
  * @param height_pct  Desired text height as % of wua_screen_h().
  * @return The new label (update it with lv_label_set_text_fmt()).
  */
