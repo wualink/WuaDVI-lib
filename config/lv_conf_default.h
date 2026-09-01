@@ -135,6 +135,10 @@
 #define LV_USE_BUTTONMATRIX     1
 #define LV_USE_CALENDAR         1
 #define LV_USE_CANVAS           1
+/* QR codes.  Off in LVGL's own default; on here because wua_qr() needs it, and
+ * it costs nothing until a code is actually created -- the encoder is a few KB
+ * of flash and the canvas comes from the pool only on demand. */
+#define LV_USE_QRCODE           1
 #define LV_USE_CHART            1
 #define LV_USE_CHECKBOX         1
 #define LV_USE_DROPDOWN         1

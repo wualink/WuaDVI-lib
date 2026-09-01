@@ -193,6 +193,55 @@ lv_obj_t *wua_value_label(lv_obj_t *parent, const char *max_text,
                           int32_t height_pct);
 
 /**
+ * @brief Largest module size a QR code may be scaled to, in pixels.
+ *
+ * A cap, not a target, and it exists because of a measurement. Scaling a
+ * symbol to fill the panel looks like the generous choice: at 1280x720 a
+ * 29-module code would land at 17 pixels per module, a 629x629 canvas, about
+ * **50 KB** of LVGL pool. An application running a 64 KB pool cannot pay that
+ * for one widget.
+ *
+ * Measured: a 29-module symbol at this cap is 264 px and costs 8 712 B of
+ * pool, and scans at 30 cm and at 2 m in all five display modes. Without the
+ * cap the same symbol at 1280x720 would take about 21 pixels per module, a
+ * 693 px canvas and roughly 60 KB — which does not fit a 64 KB pool at all.
+ */
+#define WUA_QR_MAX_MODULE_PX 8
+
+/**
+ * @brief QR code, sized in whole pixels per module.
+ *
+ * The one widget on a WuaDVI screen that a machine reads rather than a person,
+ * which changes what "looks right" means:
+ *
+ * - **Integer scaling only.** The display pixel-doubles in the colour modes,
+ *   and a symbol resampled by a fraction stops being scannable long before it
+ *   stops looking like a QR code.
+ * - **The quiet zone is not decoration.** Scanners need the four-module margin
+ *   to find the symbol at all, so it is always drawn.
+ * - **Black on white, always.** The theme does not apply. Inverting a QR code
+ *   defeats most scanners, and the monochrome modes threshold by luminance --
+ *   a themed code would be a code that works on three modes out of five.
+ *
+ * Keep the payload short. LVGL encodes in **byte mode** always
+ * (`qrcodegen_encodeBinary`), so the uppercase trick that would buy density in
+ * QR alphanumeric mode buys nothing here — capitals cost the same as anything
+ * else. A 42-byte URL lands on a version 3 symbol, 29 modules across.
+ *
+ * The symbol grows in steps, so a payload one byte past a version boundary
+ * costs four more modules, and the same space then holds a smaller module.
+ *
+ * @param parent     Parent object; its resolved size bounds the code.
+ * @param text       Payload. NUL-terminated.
+ * @param module_px  Wanted pixels per module. Clamped to 1 and to
+ *                   #WUA_QR_MAX_MODULE_PX, and reduced further if the symbol
+ *                   would not fit @p parent.
+ * @return The QR object, or NULL when the payload could not be encoded or the
+ *         parent is too small to hold a scannable code.
+ */
+lv_obj_t *wua_qr(lv_obj_t *parent, const char *text, int32_t module_px);
+
+/**
  * @brief Titled panel: bordered tile with a small caption at the top-left.
  *
  * The background is filled with @p bg_color as a fine two-shade dither (not a
