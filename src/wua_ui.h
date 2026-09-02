@@ -231,13 +231,22 @@ lv_obj_t *wua_value_label(lv_obj_t *parent, const char *max_text,
  * The symbol grows in steps, so a payload one byte past a version boundary
  * costs four more modules, and the same space then holds a smaller module.
  *
- * @param parent     Parent object; its resolved size bounds the code.
+ * **Needs `LV_USE_QRCODE`.** A project that carries its own `lv_conf.h` --
+ * the usual way to change LVGL's memory pool -- overrides this library's
+ * config completely, so the flag has to be set there too. Without it this
+ * returns NULL and says so once on the console.
+ *
+ * @param parent     Parent object. Its content WIDTH bounds the code; the
+ *                   screen bounds the other axis, because a column sized to
+ *                   its content has no height until it has children and the
+ *                   code is usually the first one.
  * @param text       Payload. NUL-terminated.
  * @param module_px  Wanted pixels per module. Clamped to 1 and to
  *                   #WUA_QR_MAX_MODULE_PX, and reduced further if the symbol
  *                   would not fit @p parent.
- * @return The QR object, or NULL when the payload could not be encoded or the
- *         parent is too small to hold a scannable code.
+ * @return The QR object, or NULL when the widget is not compiled in, the
+ *         payload could not be encoded, or the parent is too small to hold a
+ *         scannable code.
  */
 lv_obj_t *wua_qr(lv_obj_t *parent, const char *text, int32_t module_px);
 
