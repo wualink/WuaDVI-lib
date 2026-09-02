@@ -10,6 +10,7 @@
  *
  * Copyright (c) 2026 Wualabs LTD. MIT licensed.
  */
+#include <Arduino.h>
 #include <string.h>
 
 #include "wua_ui.h"
@@ -70,17 +71,26 @@ lv_obj_t *wua_qr(lv_obj_t *parent, const char *text, int32_t module_px) {
     if (module_px > WUA_QR_MAX_MODULE_PX)
         module_px = WUA_QR_MAX_MODULE_PX;
 
-    /* Fit the parent, not the screen: this may land in a tile. */
+    /* Width from the parent, height from the screen — and the asymmetry is the
+     * point.
+     *
+     * A container laid out as a column is sized to its CONTENT vertically, so
+     * before it has any children its height is nothing. The QR is normally the
+     * first child, so asking the parent how tall it is returns a number that
+     * describes the past. Taking `min(width, height)` of that refused to draw
+     * anything at all: the symbol needed 33 px and the parent reported less
+     * than that, from a height that had not happened yet.
+     *
+     * The width is trustworthy, because it comes from a percentage of a parent
+     * that has already been settled. For the other axis the screen is the only
+     * honest bound: a code taller than the display is useless whatever the
+     * container later grows to. */
     lv_obj_update_layout(lv_screen_active());
-    int32_t avail_w = lv_obj_get_content_width(parent);
-    int32_t avail_h = lv_obj_get_content_height(parent);
-    int32_t avail = (avail_w < avail_h) ? avail_w : avail_h;
-    if (avail <= 0) {
-        /* An unresolved parent — created before its siblings, as the two-pass
-         * screen builds do. Fall back to the screen's shorter axis. */
-        avail = (wua_screen_w() < wua_screen_h()) ? (int32_t)wua_screen_w()
-                                                  : (int32_t)wua_screen_h();
-    }
+    int32_t avail = lv_obj_get_content_width(parent);
+    if (avail <= 0)
+        avail = (int32_t)wua_screen_w();
+    if (avail > (int32_t)wua_screen_h())
+        avail = (int32_t)wua_screen_h();
 
     while (module_px > 1 && grid * module_px > avail)
         --module_px;
@@ -115,8 +125,25 @@ lv_obj_t *wua_qr(lv_obj_t *parent, const char *text, int32_t module_px) {
     (void)parent;
     (void)text;
     (void)module_px;
-    /* Returning NULL rather than failing to link: an application that does not
-     * enable the widget still compiles, and finds out at the call site. */
+
+    /* Say which of the two it is.
+     *
+     * This used to return NULL with a comment claiming the caller "finds out
+     * at the call site". It does not: NULL here is indistinguishable from NULL
+     * because the symbol did not fit, and an application reported the second
+     * while suffering the first for three rounds of debugging.
+     *
+     * A project with its own lv_conf -- which is the normal way to change the
+     * memory pool -- overrides the library's config completely, so enabling
+     * the widget in this library's default does nothing for it. That is the
+     * situation this message exists to name. */
+    static bool said = false;
+    if (!said) {
+        said = true;
+        Serial.println("[QR] LV_USE_QRCODE is 0 in this build, so no QR can be");
+        Serial.println("     drawn. If this project has its own lv_conf.h, the");
+        Serial.println("     flag has to be set THERE.");
+    }
     return NULL;
 }
 
