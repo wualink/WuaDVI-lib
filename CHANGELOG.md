@@ -69,6 +69,13 @@ lines move under a new version heading.
 
 ### Fixed
 
+- **An arc at its minimum no longer vanishes in the monochrome modes.** Its
+  track was drawn with `unlit()` — the tile's own black once thresholded — so
+  with nothing lit the widget showed nothing at all, and a panel of arcs at
+  zero read as empty tiles. In mono the track is now a hairline in the lit
+  colour, the extent `outline()` already gives the bar and the LED; the value
+  is still the thick part. The colour modes are unchanged.
+
 - **Composite sweeps no longer outlive their widgets.** The animations
   `wua_gauge_sweep()` and `wua_meter_sweep()` start carry the composite handle
   as their variable, not an LVGL object, so `lv_obj_clean()` did not cancel
