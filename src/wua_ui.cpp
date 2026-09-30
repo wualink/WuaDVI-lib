@@ -847,11 +847,24 @@ lv_obj_t *wua_arc(lv_obj_t *parent, int32_t size_pct,
     lv_arc_set_bg_angles(a, 135, 45);
     lv_arc_set_rotation(a, 0);
 
-    /* The track uses unlit(), not dim.  The theme's dim is a light grey, which
-     * the 1-bit threshold rounds UP to white — so track and indicator both
-     * came out white and the arc read as a solid ring with no value in it. */
-    lv_obj_set_style_arc_color(a, unlit(wua_theme()->dim), LV_PART_MAIN);
-    lv_obj_set_style_arc_width(a, aw, LV_PART_MAIN);
+    /* The track has to be readable on its own: an arc at its minimum shows
+     * nothing else.
+     *
+     * In colour it is the theme's dim, as wide as the indicator.  One bit
+     * cannot draw dim.  Drawn as dim, the 1-bit threshold rounds the light
+     * grey UP to white, so track and indicator read as one solid ring with no
+     * value in it; drawn with unlit(), it is the tile's own black, and an arc
+     * at its minimum vanished outright -- a panel of arcs at zero read as
+     * empty tiles.  So in mono the track is a hairline in the lit colour: the
+     * extent stays visible, as outline() keeps the bar's and the LED's, and
+     * the value is still the thick part. */
+    if (wua_screen_is_mono()) {
+        lv_obj_set_style_arc_color(a, wua_theme()->text, LV_PART_MAIN);
+        lv_obj_set_style_arc_width(a, hairline(), LV_PART_MAIN);
+    } else {
+        lv_obj_set_style_arc_color(a, wua_theme()->dim, LV_PART_MAIN);
+        lv_obj_set_style_arc_width(a, aw, LV_PART_MAIN);
+    }
     lv_obj_set_style_arc_opa(a, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(a, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_arc_color(a, lit(color), LV_PART_INDICATOR);
