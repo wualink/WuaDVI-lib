@@ -20,6 +20,18 @@ should never have to do itself:
    behind a public header would compile it into every translation unit that
    includes WuaDVI.h.
 
+── Under ESPHome ──────────────────────────────────────────────────────────────
+ESPHome (2026.7 and later) builds without PlatformIO, but converts a PlatformIO
+library into an ESP-IDF component itself and runs this script on the way, in a
+stand-in environment: `env.Append` is honoured, every other `env` method is a
+no-op returning None, `__file__` IS defined, the working directory is the
+library, and there is no `pio_lib_builder`.  So the library root falls back to
+this file's location, and the header to a directory beside the library — which
+is that build's own copy of it; for a library referenced from a local folder it
+is the folder itself, which is why .gitignore covers it.  `$PROJECT_LIBDEPS_DIR`
+is unknown there too, and that is right: ESPHome writes the LVGL configuration
+itself, so `_provide_lvgl_config` stands aside.
+
 ── Where the firmware comes from ──────────────────────────────────────────────
 The binary is not vendored in git.  Two small text files pin it:
 
@@ -40,7 +52,11 @@ import zlib
 
 Import("env", "pio_lib_builder")  # noqa: F821  (injected by SCons/PlatformIO)
 
-LIB_DIR = pio_lib_builder.path    # noqa: F821  (see note 1 above)
+try:
+    LIB_DIR = pio_lib_builder.path  # noqa: F821  (see note 1 above)
+except NameError:
+    # ESPHome: no pio_lib_builder, but __file__ is set (see "Under ESPHome")
+    LIB_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS_DIR = os.path.join(LIB_DIR, "assets", "rp-firmware")
 STUB_PATH = os.path.join(LIB_DIR, "tools", "rp-flash-stub", "stub.bin")
 
@@ -246,7 +262,10 @@ def _generate_payload():
         "",
     ])
 
-    out_dir = os.path.join(env.subst("$BUILD_DIR"), "wuadvi_generated")  # noqa: F821
+    # ESPHome models no SCons variables: subst() returns None there, and the
+    # header goes beside the library instead (see "Under ESPHome").
+    build_dir = env.subst("$BUILD_DIR")  # noqa: F821
+    out_dir = os.path.join(build_dir or LIB_DIR, "wuadvi_generated")
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, "wuadvi_rp_payload.h")
 

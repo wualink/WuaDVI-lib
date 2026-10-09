@@ -311,8 +311,9 @@ assets/rp-firmware/VERSION    the release, e.g. 1.0.0
 assets/rp-firmware/SHA256     that asset's expected hash
 ```
 
-Under PlatformIO the pinned image is downloaded on the first build, verified
-against the hash and cached; the binary itself is not vendored in git. Pinning
+Under PlatformIO — and under ESPHome, whose build runs the same hook — the
+pinned image is downloaded on the first build, verified against the hash and
+cached; the binary itself is not vendored in git. Pinning
 by tag alone is not enough — a git tag can be moved — so a hash mismatch fails
 the build rather than flashing an unknown image.
 
