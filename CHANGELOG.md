@@ -18,6 +18,15 @@ lines move under a new version heading.
 
 ### Added
 
+- **The build hook runs under ESPHome.** ESPHome 2026.7 and later build
+  without PlatformIO, but convert a PlatformIO library into an ESP-IDF
+  component themselves and run its `extraScript` in a stand-in environment —
+  one with no `pio_lib_builder` and no `$BUILD_DIR`. The hook failed there on
+  the first, so the display-engine firmware was never embedded. It now falls
+  back to its own location for the library root and writes the header beside
+  the library, which is what lets an ESPHome component use this library as it
+  is. PlatformIO builds are unchanged.
+
 - **`wua_clear()` and `wua_settle()`** — the two calls a screen rebuilt at
   runtime needs. `wua_clear()` empties a container and releases the composite
   handles whose widgets went with it; `wua_settle()` resolves pending layouts
