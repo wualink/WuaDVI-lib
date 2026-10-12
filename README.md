@@ -5,9 +5,10 @@ LVGL widgets that adapt themselves to every supported resolution.
 
 Wualink, member of Wualabs — [wualabs.com](https://wualabs.com)
 
-> **Status: 0.3.0 — validated on hardware.** The board API, transport, widget
-> primitives and runtime resolution selection all work on the WuaDVI board, in
-> every one of the five display modes. See [Roadmap](#roadmap).
+> **Status: 0.4.0 — validated on hardware, on WuaDVI boards v1.0 and v1.1.**
+> The board API, transport, widget primitives and runtime resolution selection
+> all work, in every one of the five display modes. Board v1.2 needs a later
+> release. See [Roadmap](#roadmap).
 
 ---
 
@@ -96,7 +97,7 @@ One line. LVGL is installed for you, and so is the pinned display-engine
 firmware:
 
 ```ini
-lib_deps = https://github.com/wualink/WuaDVI-lib.git#v0.3.0
+lib_deps = https://github.com/wualink/WuaDVI-lib.git#v0.4.0
 ```
 
 Pin an exact version rather than a floating range — this library pins the
@@ -329,7 +330,8 @@ use this happens once and is invisible.
 |---|---|
 | 0.1.0 | Packaging, RP firmware pinning and build hook |
 | 0.2.0 | Board API (L0), transport (L1), widget primitives (L2) and theming |
-| **0.3.0** | Runtime resolution selection — **current** |
+| 0.3.0 | Runtime resolution selection |
+| **0.4.0** | A primitive for every standard widget, QR codes, screens rebuilt at runtime, and the build hook under ESPHome — **current** |
 | 1.0.0 | Stable API |
 
 Related repositories:
