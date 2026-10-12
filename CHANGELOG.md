@@ -16,6 +16,15 @@ lines move under a new version heading.
 
 ## [Unreleased]
 
+### Planned
+
+- Changing mode **without** a restart, as a separate call. It cannot be
+  `setResolution()`: the widget primitives resolve their pixel sizes when they
+  are created, so an in-place switch requires the application to rebuild its
+  own widgets — which is precisely what the restart does for it today.
+
+## [0.4.0] - 2026-10-12
+
 ### Added
 
 - **The build hook runs under ESPHome.** ESPHome 2026.7 and later build
@@ -201,19 +210,14 @@ lines move under a new version heading.
   lines that implement it.
 - The `res` parameter of `begin()`. `setResolution()` selects the mode.
 
-### Planned
-
-- Changing mode **without** a restart, as a separate call. It cannot be
-  `setResolution()`: the widget primitives resolve their pixel sizes when they
-  are created, so an in-place switch requires the application to rebuild its
-  own widgets — which is precisely what the restart does for it today.
-
 ### Verified
 
 - **0.3.0 validated on hardware**: all five display modes bring up and render,
   the runtime mode switch works end to end (store, restart, re-negotiate,
   repaint), the widget primitives keep their proportions across every mode, and
   the telemetry readout tracks the engine temperature.
+
+[0.4.0]: https://github.com/wualink/WuaDVI-lib/releases/tag/v0.4.0
 
 ## [0.3.0] - 2026-08-04
 
@@ -303,5 +307,5 @@ README roadmap.
 - `HelloWuaDVI` example, reference LVGL configuration (`extras/`), MIT licence,
   contribution guide, clang-format house style, CI and issue/PR templates.
 
-[Unreleased]: https://github.com/wualink/WuaDVI-lib/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/wualink/WuaDVI-lib/compare/v0.4.0...HEAD
 [0.1.0]: https://github.com/wualink/WuaDVI-lib/releases/tag/v0.1.0
